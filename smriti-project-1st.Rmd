@@ -1,0 +1,104 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "6/15/2020"
+output: 
+  html_document:
+    keep_md: yes
+    df: paged
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,
+	warning = FALSE)
+```
+
+## Load library
+```{r}
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyverse)
+
+```
+
+
+
+##Loading data
+```{r}
+jobs_gender <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-05/jobs_gender.csv")
+jobs_gender
+
+
+```
+
+##To add column i.e male female worker proportion
+```{r}
+prop_male_female <- jobs_gender %>% 
+  select(year,occupation,total_workers,workers_male,workers_female) %>% 
+  mutate(prop = workers_male/workers_female)
+prop_male_female
+```
+
+##To filter the minor_category:architecture and engineering
+```{r}
+arch_eng <- jobs_gender %>% select(year,occupation,minor_category,major_category,workers_male,workers_female) %>% 
+  filter(minor_category=="Architecture and Engineering")
+arch_eng
+
+```
+##To arrange total earnings in ascending orders according to wages
+```{r}
+asc_wage <- jobs_gender %>% 
+   select(year,occupation,major_category,minor_category,total_earnings) %>% 
+   arrange(total_earnings)
+ asc_wage
+ 
+```
+##To find mean wage of whole major category
+```{r}
+mean_wage <- jobs_gender %>% 
+   group_by(major_category) %>% 
+   summarise(ave_wage = mean(total_earnings))
+ mean_wage
+ 
+```
+##To find number of male median earning > 50000 and female median earning >30000
+```{r}
+number <- jobs_gender %>% 
+   filter((total_earnings_male<50000) & (total_earnings_female <30000) ) %>% 
+   group_by(occupation) %>% 
+   summarise(total = n())
+number
+```
+
+##To find average earning of all jobs
+```{r}
+average <- jobs_gender %>% 
+  summarise(average=mean(total_earnings))
+   
+average
+```
+##Female earning more than average earning
+```{r}
+high_income <- jobs_gender %>% 
+  select(year,occupation,total_earnings_female) %>% 
+  filter(total_earnings_female > 49762.09) %>% 
+  group_by(occupation) 
+
+high_income
+```
+##ggplot
+```{r}
+
+ggplot(jobs_gender,aes(x=occupation, y= total_workers, fill=occupation))+
+           geom_col()+
+           guides(fill=F)
+```
+
+
+
+
+
+
