@@ -1,0 +1,126 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "6/21/2020"
+output: 
+  html_document:
+    keep_md: yes
+    df: paged
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+```{r}
+##load library
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyverse)
+library(mice)
+```
+```{r}
+##loading data
+jobs_gender <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-05/jobs_gender.csv")
+jobs_gender
+```
+
+
+```{r}
+p <- function(x) {sum(is.na(x))/length(x)*100}
+apply(jobs_gender,2,p)
+
+```
+```{r}
+jobs_gender$total_earnings_male[which(is.na(jobs_gender$total_earnings_male))] <- mean(jobs_gender$total_earnings_male , na.rm = TRUE)
+jobs_gender$total_earnings_male
+
+jobs_gender$total_earnings_female[which(is.na(jobs_gender$total_earnings_female))] <- mean(jobs_gender$total_earnings_female ,na.rm = TRUE)
+jobs_gender$total_earnings_female
+
+jobs_gender$wage_percent_of_male[which(is.na(jobs_gender$wage_percent_of_male))] <- mean(jobs_gender$wage_percent_of_male ,na.rm = TRUE)
+jobs_gender$wage_percent_of_male
+
+```
+```{r}
+##to find the average total earnings of male
+ave_male <- jobs_gender %>% 
+  summarise(average = mean(total_earnings_male))
+ave_male
+
+```
+```{r}
+##to find the average total earnings of female
+ave_female <- jobs_gender %>% 
+  summarise(average = mean(total_earnings_female))
+ave_female
+```
+```{r}
+boxplot(jobs_gender$wage_percent_of_male ,main ="boxplot", ylab = "wage_percent_of_male")
+
+
+  
+```
+```{r}
+t.test(jobs_gender$wage_percent_of_male , mu = 85 , alternative = "two.sided" ,conf.level = 0.95 )
+
+```
+```{r}
+boxplot(jobs_gender$wage_percent_of_male~jobs_gender$year ,main ="boxplot by year", ylab = "wage_percent_of_male")
+
+```
+##To add column i.e male female worker proportion
+```{r}
+prop_male_female <- jobs_gender %>% 
+  select(year,occupation,total_workers,workers_male,workers_female) %>% 
+  mutate(prop = workers_male/workers_female)
+prop_male_female
+```
+##To filter the minor_category:architecture and engineering
+```{r}
+arch_eng <- jobs_gender %>% select(year,occupation,minor_category,major_category,workers_male,workers_female) %>% 
+  filter(minor_category=="Architecture and Engineering")
+arch_eng
+
+```
+##To arrange total earnings in ascending orders according to wages
+```{r}
+asc_wage <- jobs_gender %>% 
+   select(year,occupation,major_category,minor_category,total_earnings) %>% 
+   arrange(total_earnings)
+ asc_wage
+ 
+```
+##To find mean wage of whole major category
+```{r}
+mean_wage <- jobs_gender %>% 
+   group_by(major_category) %>% 
+   summarise(ave_wage = mean(total_earnings))
+ mean_wage
+ 
+```
+##To find number of male median earning > 50000 and female median earning >30000
+```{r}
+number <- jobs_gender %>% 
+   filter((total_earnings_male<50000) & (total_earnings_female <30000) ) %>% 
+   group_by(occupation) %>% 
+   summarise(total = n())
+number
+```
+
+##ggplot
+```{r}
+ggplot(jobs_gender,aes(x=total_workers, y= workers_female, color=major_category))+
+           geom_point()
+```
+```{r}
+ggplot(jobs_gender,aes(x=total_earnings))+
+  geom_histogram(bandwith=10,aes(fill=major_category), color="Black")
+```
+
+
+
+
+
+
