@@ -1,0 +1,456 @@
+---
+title: "adsl"
+author: "Smriti karki"
+date: "7/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(haven)
+library(readr)
+library(readxl)
+library(dplyr)
+library(tidyverse)
+
+```
+
+## read SDTM raw file (importing files)
+```{r}
+orig_adsl <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+dm <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/dm.sas7bdat", NULL)
+sc <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/sc.sas7bdat", NULL)
+ds <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/ds.sas7bdat", NULL)
+suppdm <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/suppdm.sas7bdat", NULL)
+suppdv <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/suppdv.sas7bdat", NULL)
+sv <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/sv.sas7bdat", NULL)
+lb <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/lb.sas7bdat", NULL)
+ex <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/ex.sas7bdat", NULL)
+ce <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/ce.sas7bdat", NULL)
+suppce <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/suppce.sas7bdat",NULL)
+vs <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/vs.sas7bdat",NULL)
+mh <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/mh.sas7bdat",NULL)
+co <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/co.sas7bdat",NULL)
+c1 <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/c1.sas7bdat",NULL)
+y8 <- read_sas("C:/Users/Dell/Downloads/New_Study-master/New_Study-master/sdtm/y8.sas7bdat",NULL)
+```
+
+# create adsl file
+```{r}
+adsl_1 <- dm %>% select(STUDYID, INVID, INVNAM, SITEID, USUBJID, AGE, AGEU, BRTHDTC, SEX, RACE, ETHNIC, COUNTRY, ARM, ARMCD, ACTARM, ACTARMCD, DTHFL )
+view(adsl_1)
+```
+##AGEGR1(10)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR1 = case_when(
+          AGE <35 ~ "<35",
+          AGE >= 35 & AGE < 50 ~ "35- <50",
+          AGE >= 50 ~ ">= 50"))
+```
+##AGEGR1N (11)
+
+
+
+
+
+##AGEGR1N (11)
+```{r}
+adsl_1 <- adsl_1 %>%
+  mutate(AGEGR1N = case_when(
+    AGE <35 ~ "1",
+    AGE >= 35 & AGE < 50 ~"2",
+    AGE >=50 ~ "3"))
+
+```
+
+
+
+##AGEGR2(12)
+```{r warning=FALSE}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR2 = case_when(
+  AGE <=18 ~"<=18",
+  AGE >=19 & AGE <=64 ~"19-64",
+  AGE >=65 ~">=65"))
+```
+##AGEGR2N(13)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR2N = case_when(
+    AGE <= 18 ~"1",
+    AGE >=19 & AGE <=64 ~"2",
+    AGE >=65 ~ "3"))
+```
+##AGEGR3(14)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR3 = case_when(
+    AGE >=18 & AGE <=64 ~"18-64",
+    AGE >=65 & AGE <=84 ~"65-84",
+    AGE >=85 ~">=85"))
+```
+##AGEGR3N(15)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR3N =case_when(
+    AGE >=18 & AGE <=64 ~"1",
+    AGE >=65 & AGE <=84 ~"2",
+    AGE >=85 ~"3"))
+```
+##AGEGR4(16)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR4 = case_when(
+    AGE < 50 ~"<50",
+    AGE >=50 ~">=50"))
+```
+##AGEGR4N(17)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AGEGR4N = case_when(
+    AGE <50 ~"1",
+    AGE >=50 ~"2"))
+```
+##SEXN(20)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(SEXN = case_when(
+    SEX == "F" ~"1",
+    SEX == "M" ~"2"))
+```
+##SRGENDERN(21)
+```{r}
+sc <-as.data.frame(sc)
+gender <- sc %>%select(c(USUBJID,SCTESTCD,SCSTRESC)) %>% 
+  filter(SCTESTCD == "GENDER")
+adsl_1 <- adsl_1 %>% full_join(gender)
+adsl_1 <- distinct(adsl_1, USUBJID , .keep_all = TRUE)
+
+adsl_1 <- adsl_1 %>% 
+  mutate(SRGENDER = case_when(
+    SCTESTCD=="GENDER"  & SCSTRESC == "FEMALE" ~ "FEMALE",
+    SCTESTCD=="GENDER" & SCSTRESC == "MALE" ~ "MALE"))
+```
+##SRGENDERN(22)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(SRGENDERN = case_when(
+    SCTESTCD=="GENDER"  & SCSTRESC == "FEMALE" ~ 1,
+    SCTESTCD=="GENDER" & SCSTRESC == "MALE" ~ 2))
+```
+
+
+##RACEN (24)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(RACEN = case_when(
+    RACE == "AMERICAN INDIAN OR ALASKA NATIVE  " ~"1",
+    RACE == "ASIAN" ~"2",
+    RACE == "BLACK OR AFRICAN AMERICAN" ~"3",
+    RACE == "MULTIPLE" ~"4",
+    RACE == "WHITE" ~"6"))
+```
+##RACEGR1N(28)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(RACEGR1N = case_when(
+    RACE == "WHITE" ~"1",
+    RACE != "WHITE" ~"2",
+    RACE == "MISSING" ~"3"))
+```
+
+##RACEGR2(29)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(RACEGR2 = case_when(
+    RACE == "BLACK OR AFRICAN AMERICAN" ~ "BLACK/AFRICAN AMERICAN",
+    RACE != "BLACK OR AFRICAN AMERICAN" ~ "NON-BLACK/AFRICAN AMERICAN",
+    RACE == "MISSING" ~ "MISSING"))
+```
+##RACEGR2N(30)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(RACEGR2N = case_when(
+    RACE == "BLACK OR AFRICAN AMERICAN" ~"1",
+    RACE != "BLACK OR AFRICAN AMERICAN" ~"2",
+    RACE == "MISSING" ~ "MISSING"))
+```
+
+##ETHNICN(32)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(ETHNICN = case_when(
+    ETHNIC == "HISPANIC OR LATINO" ~ "1",
+    ETHNIC == "NOT HISPANIC OR LATINO" ~ "2"))
+```
+##AETHNIC(33)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AETHNIC = case_when(
+    ETHNIC == "NA" ~ "MISSING",
+    ETHNIC == "HISPANIC OR LATINO" ~ "HISPANIC OR LATINO",
+    ETHNIC == "NOT HISPANIC OR LATINO" ~ "NOT HISPANIC OR LATINO"))
+```
+##AETHNICN(34)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(AETHNICN = case_when(
+    ETHNIC == "NULL" ~ "3",
+    ETHNIC == "HISPANIC OR LATINO" ~ "1",
+    ETHNIC == "NOT HISPANIC OR LATINO" ~ "2"))
+```
+##COUNTRYN(36)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(COUNTRYN = case_when(
+    COUNTRY == "USA" ~ "13",
+    COUNTRY == "CAN" ~ "3"))
+```
+##TRT01P(57) 
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(TRT01P = case_when(
+    ARM == "CAB LA (600 mg) + RPV LA (900 mg) Q2M" ~"Q2M",
+    ARM == "Oral DTG (50mg) + RPV (25mg) daily" ~ "DTG+RPV",
+    ARM == "Not Assigned" ~"Not Assigned"))
+```
+##TRT01PN(58)
+``` {r}
+adsl_1 <- adsl_1 %>% 
+  mutate(TRT01PN = case_when(
+    ARM == "CAB LA (600 mg) + RPV LA (900 mg) Q2M" ~"1",
+    ARM == "Oral DTG (50mg) + RPV (25mg) daily" ~"2",
+    ARM == "Not Assigned" ~"999"))
+```
+##TRT01A(59)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(TRT01A = case_when(
+    ACTARM == "CAB LA (600 mg) + RPV LA (900 mg) Q2M" ~ "Q2M",
+    ACTARM == "Oral DTG (50mg) + RPV (25mg) daily" ~ "DTG+RPV",
+    ACTARM == "Not Assigned" ~"Not Assigned"))
+```
+##TRT01AN(60)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(TRT01AN = case_when(
+    ACTARM == "CAB LA (600 mg) + RPV LA (900 mg) Q2M" ~ "1",
+    ACTARM == "Oral DTG (50mg) + RPV (25mg) daily" ~ "2",
+    ACTARM == "Not Assigned" ~"999"))
+```
+##ITTEFL(46)
+```{r}
+ex <-as.data.frame(ex)
+b_1 <- ex %>%  select(c(USUBJID,EXSTDTC))
+adsl_1 <- adsl_1 %>% full_join(b_1)
+
+adsl_1 <- adsl_1 %>% 
+  mutate(ITTEFL = case_when(
+    EXSTDTC == "MIssING" & TRT01P =="MISSING" ~"N",
+    EXSTDTC != "MIssING" & TRT01P !="MISSING" ~"Y")) 
+  
+ 
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)
+```
+##ITTEFLN(45)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(ITTEFLN = case_when(
+    EXSTDTC == "MIssING" & TRT01P =="MISSING" ~"0",
+    EXSTDTC != "MIssING" & TRT01P !="MISSING" ~"1")) %>% 
+  select(-EXSTDTC)
+```
+##PPROTFL(37)
+```{r}
+suppdv <- as.data.frame(suppdv)
+a_1 <- suppdv %>% select(c(STUDYID,USUBJID))
+adsl_1 <- adsl_1 %>% full_join(a_1)
+
+adsl_1 <- adsl_1 %>% 
+  mutate(PPROTFL = case_when(
+    ITTEFL == "N" ~ "No",
+    ITTEFL == "Y" ~ "Yes"))
+adsl_1 <- distinct(adsl_1, USUBJID , .keep_all = TRUE)
+```
+##PPROTFN(38)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(PPROTFN = case_when(
+    ITTEFL == "N" ~0,
+    ITTEFL == "Y" ~1))
+```
+##SAFFL(39)
+```{r}
+ex <- as.data.frame(ex)
+b_1 <- ex %>% select(USUBJID,EXSTDTC)
+adsl_1 <- adsl_1 %>%  full_join(b_1)
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)
+adsl_1 <- adsl_1 %>% 
+  mutate(SAFFL = case_when(
+    TRT01A != "Not Assigned" & EXSTDTC != "Not Assigned" ~"Y",
+    TRUE ~"N"))
+```
+
+##SAFFLN(40)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(SAFFLN = case_when(
+    TRT01A == "MISSING" & EXSTDTC == "MISSING" ~"0",
+    TRT01A != "MISSING" & EXSTDTC != "MISSING" ~"1" )) %>% select(-EXSTDTC)
+```
+##MNTFL(47)
+```{r}
+adsl_1 <- adsl_1 %>%
+  mutate(MNTFL = case_when(
+    ITTEFL == "Y" ~ "Y",
+    ITTEFL == "N" ~ "N"))
+```
+##MNTFLN(48)
+```{r}
+adsl_1 <- adsl_1 %>%
+  mutate(MNTFLN = case_when(
+    ITTEFL == "Y" ~ 1,
+    ITTEFL == "N" ~ 0))
+```
+##LTFUEL(49)
+```{r}
+ds <- as.data.frame(ds)
+c_1 <- ds %>% select(c(USUBJID, DSSCAT, EPOCH ,DSDECOD)) 
+adsl_1 <- adsl_1 %>% full_join(c_1)
+
+adsl_1 <- adsl_1 %>% 
+  mutate(LTFUFL = case_when(
+    DSSCAT == "STUDY CONCLUSION" & EPOCH == "FOLLOW-UP" & (DSDECOD == "COMPLETED" | DSDECOD == "CONTINUATION TO FOLLOW UP PHASE")~ "Y" ,
+    !(DSSCAT == "STUDY CONCLUSION" & EPOCH == "FOLLOW-UP" & (DSDECOD == "COMPLETED" | DSDECOD == "CONTINUATION TO FOLLOW UP PHASE"))~ "N"))
+         
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)
+```
+##LTFUFLN(50)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(LTFUELN = case_when(
+    DSSCAT == "STUDY CONCLUSION" & EPOCH == "FOLLOW-UP" & (DSDECOD == "COMPLETED" | DSDECOD == "CONTINUATION TO FOLLOW UP PHASE")~ 1 ,
+    TRUE ~ 0)) %>% select( -EPOCH )
+```
+##SCRNFL(41)
+```{r}
+ds <- as.data.frame(ds)
+temp41 <- ds %>% select(USUBJID,DSSTDTC,VISITNUM,DSSCAT)
+adsl_1 <- adsl_1 %>% full_join(temp41)
+adsl_1 <- distinct(adsl_1,USUBJID, .keep_all = TRUE)
+sv <- as.data.frame(sv)
+temp41.1 <- sv %>% select(USUBJID,SVSTDTC)
+adsl_1 <- adsl_1 %>% full_join(temp41.1)
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)
+adsl_1 <- adsl_1 %>%
+  mutate(SCRNFL = case_when(
+    ((toupper(DSSCAT )== "SCREEN" & DSSTDTC != "NULL") | (as.integer(VISITNUM)=="10" & SVSTDTC != "NULL" )) ~"Y",
+    TRUE ~ "N"))
+```
+##SCRNFN(42)
+```{r}
+adsl_1 <- adsl_1 %>%
+  mutate(SCRNFN = case_when(
+    (toupper(DSSCAT )== "SCREEN" & DSSTDTC != "NULL") | (as.integer(VISITNUM)=="10" & SVSTDTC != "NULL" ) ~1,
+    TRUE ~ 0)) %>% select(-DSSTDTC,-VISITNUM,-SVSTDTC)
+```
+##ENRLFL(43)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(ENRLFL = case_when(
+    DSDECOD == "INFORMED CONSENT OBTAINED" & DSSCAT == "STUDY" ~"N",
+    TRUE ~ "Y"))
+```
+##ENRLFN(44)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(ENRLFN = case_when(
+    DSDECOD == "INFORMED CONSENT OBTAINED" & DSSCAT == "STUDY" ~"0",
+    TRUE ~ "1"))
+```
+##CVFFL(51)
+```{r}
+lb <- as.data.frame(lb)
+temp51 <- lb %>% select(USUBJID,LBTESTCD,LBMETHOD,LBSTRESN)
+adsl_1 <- adsl_1 %>% full_join(temp51)
+adsl_1 <- distinct(adsl_1,USUBJID, .keep_all = TRUE)
+
+adsl_1 <- adsl_1 %>% 
+  mutate(CVFFL = case_when(
+    LBTESTCD == "HIV1RNA" & LBMETHOD == "POLYMERASE CHAIN REACTION" & LBSTRESN >= "200" ~ "Y",
+    TRUE ~ "N"))
+```
+##CVFFN(52)
+```{r}
+adsl_1 <- adsl_1 %>% 
+  mutate(CVFFN = case_when(
+    LBTESTCD == "HIV1RNA" & LBMETHOD == "POLYMERASE CHAIN REACTION" & LBSTRESN >= "200" ~ 1,
+    TRUE ~ 0)) %>% select(-LBTESTCD,-LBMETHOD,-LBSTRESN)
+```
+##
+
+
+##MNTCMPS(63)
+```{r}
+adsl_1 <- adsl_1 %>% mutate(MNTCMPS = case_when(
+  MNTFL == "Y" & DSSCAT == "STUDY CONCLUSION" ~"COMPLETED",
+  MNTFL == "Y" & DSSCAT == "STUDY TREATMENT DISCONTINUATION" ~"WITHDRAWN",
+  MNTFL == "Y" ~"ONGOING"))
+```
+##MNTCMPSN(64)
+```{r}
+adsl_1 <- adsl_1 %>%mutate(MNTCMPSN=case_when(
+  MNTCMPS == "ONGOING" ~ 1,
+  MNTCMPS == "COMPLETED" ~2,
+  MNTCMPS == "WITHDRAWN" ~3))
+```
+##LTFCMPS(66)not solved...na
+ds <-as.data.frame(ds)
+d_1 <- ds %>%  select(USUBJID,DSSCAT,EPOCH,DSDECOD) 
+adsl_1 <- adsl_1 %>% full_join(d_1)
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)
+adsl_1 <- adsl_1 %>% 
+  mutate(LTFCMPS=case_when(
+    (DSSCAT =="STUDY CONCLUSION" & EPOCH=="FOLLOW-UP" & DSDECOD=="COMPLETED" & TRT01P != "DTG + RPV") ~"COMPLETED",
+    (DSDECOD=="CONTINUATION TO FOLLOW UP PHASE" & TRT01P !="DTG + RPV" )~"ONGOING")) %>% 
+  select(-DSSCAT,-EPOCH,-DSDECOD)
+
+adsl_1$LTFCMPS[is.na(adsl_1$LTFCMPS)]=""
+##LTFCMPSN(67)
+adsl_1 <- adsl_1 %>% 
+  mutate(LTFCMPSN = case_when(
+    LTFCMPS == "ONGOING" ~1,
+    LTFCMPS == "COMPLETED" ~2,
+    LTFCMPS == "WITHDRAWAL" ~ 3))
+
+##LSEFL(68)
+ce <- as.data.frame(ce)
+ce_1 <-ce %>% select(c(STUDYID,USUBJID,CECAT))
+adsl_1 <- adsl_1 %>% full_join(ce_1)
+suppce <- as.data.frame(suppce)
+suppce_1 <-suppce %>% select(c(STUDYID, USUBJID,QVAL, QNAM))
+adsl_1 <- adsl_1 %>% full_join(suppce_1)
+adsl_1 <- distinct(adsl_1,USUBJID,.keep_all = TRUE)  
+adsl_1 <- adsl_1 %>% 
+  mutate(LSEFL = case_when(
+    (CECAT=="LIVER EVENT REPORTING" & suppce$QNAM=="LERMX" & suppce$QVAL=="LIVER EVENT STOPPING CRITERIA") ~"Y",
+    !(CECAT=="LIVER EVENT REPORTING" & suppce$QNAM=="LERMX" & suppce$QVAL=="LIVER EVENT STOPPING CRITERIA") ~"N")) %>% 
+  select(-CECAT,-QVAL,-QNAM)
+##LSEFN(69)
+adsl_1 <- adsl_1 %>% 
+  mutate(LSEFLN = case_when(
+    LSEFL == "Y" ~ 1,
+    TRUE ~0))
+##DTHFN(71)
+adsl_1 <- adsl_1 %>% 
+   mutate(DTHFN = case_when(
+    DTHFL == "Y" ~ "1",
+    TRUE ~ ""))
+##ACOUNTRY(72)
+adsl_1 <- adsl_1 %>% 
+  mutate(ACOUNTRY = case_when(
+    COUNTRY == "CAN" ~"CANADA",
+    COUNTRY == "USA" ~"UNITED STATES"))
