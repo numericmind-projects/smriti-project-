@@ -1,0 +1,48 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "8/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(dplyr)
+library(tidyr)
+```
+```{r}
+adc1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adc1.sas7bdat",NULL)
+adc12 <- adc1 %>% filter(LPDBLFL=="Y" & LPDMPFL!= "Y")
+adc121<- adc12 %>%
+  filter(ATC2CD == "C10")%>%
+  select(USUBJID,LPDBLFL,LPDMPFL,ADECOD,TRT01P,ATC2CD)
+
+test <- adc121 %>% 
+  group_by(ADECOD,TRT01P) %>%
+  select(USUBJID,LPDBLFL,LPDMPFL,ADECOD,TRT01P,ATC2CD) %>% 
+  summarise(n = n())
+test <- test %>% pivot_wider(names_from = TRT01P, values_from = n)
+
+
+test["DTG + RPV"]<- c(0,0,0,0,0,0)
+test <- test %>% mutate(Total = Q2M )
+test <- test %>%
+  mutate(q2m = scales::percent(round(Q2M/90,2))) %>% 
+  mutate(total = scales::percent(Total/97))
+
+test$q2m <- assertive.base::parenthesise(test$q2m)
+test$total <- assertive.base::parenthesise(test$total)
+
+
+test <- test %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+
+
+View(test)
+
+```

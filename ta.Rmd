@@ -1,0 +1,54 @@
+---
+title: "table1.04"
+author: "Smriti karki"
+date: "8/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading library
+```{r}
+library(haven)
+library(tidyr)
+library(dplyr)
+library(scales)
+```
+```{r}
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+
+test <- adsl %>% 
+  select(COUNTRY,INVNAM,SITEID,TRT01P,TRT01PN) %>% 
+  group_by(COUNTRY,SITEID,INVNAM,TRT01P) %>% 
+  summarise(n = n())
+test <- test %>% pivot_wider(names_from = TRT01P, values_from = n)
+test$`DTG + RPV`[is.na(test$`DTG + RPV`)] <- 0
+test$Q2M[is.na(test$Q2M)] <-0
+test$`Not Assigned`[is.na(test$`Not Assigned`)] <- 0
+test <- test %>% mutate(Total = `DTG + RPV` + Q2M + `Not Assigned`)
+x <- sum(test$`DTG + RPV`)
+y <- sum(test$Q2M)
+z <- sum(test$`Not Assigned`)
+t <- sum(test$Total)
+test <- test %>%
+  mutate(dtg = scales::percent(`DTG + RPV`/x)) %>% 
+  mutate(q2m = scales::percent(Q2M/y)) %>% 
+  mutate(notassign = scales::percent(`Not Assigned`/z)) %>% 
+  mutate(total = scales::percent(Total/t))
+test$dtg <- assertive.base::parenthesise(test$dtg)
+test$q2m <- assertive.base::parenthesise(test$q2m)
+test$notassign <- assertive.base::parenthesise(test$notassign)
+test$total <- assertive.base::parenthesise(test$total)
+
+
+test <- test %>% 
+  unite("DTG + RPV", c(`DTG + RPV`,dtg),sep = "  ") %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Not Assigned", c(`Not Assigned`,notassign),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+View(test)
+
+```
+
