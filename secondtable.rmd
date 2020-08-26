@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(haven)
 library(dplyr)
 library(tidyr)
+library(scales)
 ```
 ```{r}
 adc1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adc1.sas7bdat",NULL)
@@ -27,7 +28,6 @@ test <- adc121 %>%
   summarise(n = n())
 test <- test %>% pivot_wider(names_from = TRT01P, values_from = n)
 
-
 test["DTG + RPV"]<- c(0,0,0,0,0,0)
 test <- test %>% mutate(Total = Q2M )
 test <- test %>%
@@ -36,13 +36,37 @@ test <- test %>%
 
 test$q2m <- assertive.base::parenthesise(test$q2m)
 test$total <- assertive.base::parenthesise(test$total)
-
+test <- test %>% rename(Ingredients = ADECOD)
 
 test <- test %>% 
   unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
   unite("Total", c(Total,total),sep = "  ")
 
+test1 <- adc121 %>% distinct(USUBJID,.keep_all = T)  %>% group_by(TRT01P)%>% summarise(no=n())
+test1 <- test1 %>% mutate(Ingredients = "Any medication")
+test1 <- test1 %>% pivot_wider(names_from = TRT01P,values_from=no)
+test1["DTG + RPV"]<- 0
+test1 <- test1 %>% mutate(Total = Q2M )
+test1 <- test1 %>%
+  mutate(q2m = scales::percent(round(Q2M/90,2))) %>% 
+  mutate(total = scales::percent(Total/97))
 
-View(test)
+test1$q2m <- assertive.base::parenthesise(test1$q2m)
+test1$total <- assertive.base::parenthesise(test1$total)
+
+
+test1 <- test1 %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+
+test1<-rbind(test1,test)
+test1 <- test1 %>% rename("Q2M
+                          (N=90)"=Q2M) %>%
+                          rename("DTG + RPV
+                                 (N=7)"="DTG + RPV") %>%
+                           rename("Total
+                                 (N=97)"=Total)
+rm(test)
+View(test1)
 
 ```

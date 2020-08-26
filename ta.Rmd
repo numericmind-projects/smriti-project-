@@ -42,12 +42,25 @@ test$q2m <- assertive.base::parenthesise(test$q2m)
 test$notassign <- assertive.base::parenthesise(test$notassign)
 test$total <- assertive.base::parenthesise(test$total)
 
-
 test <- test %>% 
   unite("DTG + RPV", c(`DTG + RPV`,dtg),sep = "  ") %>% 
   unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
   unite("Not Assigned", c(`Not Assigned`,notassign),sep = "  ") %>% 
   unite("Total", c(Total,total),sep = "  ")
+test <- test %>% 
+  rename("Country "= COUNTRY)%>%
+  rename("Investigator Name "= INVNAM) %>% 
+  rename("Site Id."= SITEID)
+test <- test %>%rename("Not Assigned
+                         (N=1)"=`Not Assigned`) %>% 
+                    rename("Q2M
+                          (N=90)"=Q2M) %>%
+                          rename("DTG + RPV
+                                 (N=7)"="DTG + RPV") %>%
+                           rename("Total
+                                 (N=98)"=Total)
+
+
 View(test)
 
 ```
