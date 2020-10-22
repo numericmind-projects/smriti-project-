@@ -1,0 +1,327 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "9/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##library loading
+```{r}
+library(haven)
+library(dplyr)
+library(Hmisc)
+library(tidyverse)
+library(expss)
+```
+```{r}
+adds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adds.sas7bdat",NULL)
+ds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/ds.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL) 
+ suppds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/suppds.sas7bdat",NULL)
+```
+#combine ds and suppds
+```{r}
+suppds$IDVARVAL <- as.numeric(suppds$IDVARVAL)
+suppds <- suppds %>% rename(DSSEQ = IDVARVAL)
+
+ds_supds<- ds %>% full_join(suppds,by = c("USUBJID", "STUDYID" , "DSSEQ"))
+```
+
+#filtering required dataset
+```{r}
+temp <- ds_supds %>%  
+  filter(DSCAT == "DISPOSITION EVENT") %>% 
+  filter(DSSCAT != c("GENETICS RESEARCH (FURTHER RESEARCH)","GENETICS RESEARCH (PRIMARY RESEARCH)","STUDY (FURTHER RESEARCH)","STUDY (PRIMARY RESEARCH)")) %>% 
+  filter(DSDECOD != "COMPLETED") %>% 
+  filter(DSSCAT!= "") %>% 
+  filter(DSSCAT != "STUDY" & DSCAT != "PROTOCOL MILESTONE" & DSDECOD != "INFORMED CONSENT OBTAINED") %>%
+  filter(DSTERM != "WITHDREW ICF PER TX ENROLLMENT ERROR.  GSK REQUEST TO CORRECTLY ENROLLED AS #00029.")
+```
+##APHASE(29)
+```{r}
+temp <- temp %>% mutate(APHASE =case_when(
+  EPOCH == "SCREENING" ~ str_to_title("SCREENING"),
+  EPOCH == "TREATMENT" ~ "Maintenance",
+  EPOCH == "FOLLOW-UP" ~ "Long-term Follow-up"))
+```
+##APHASEN(30)
+```{r}
+temp <- temp %>% mutate(APHASEN = case_when(
+ APHASE == "Screening" ~ 1,
+ APHASE == "Maintenance" ~ 2,
+ APHASE == "Long-term Follow-up" ~ 3))
+```
+#predessor of ds
+```{r}
+adds1 <- temp %>% rename(SRCSEQ=DSSEQ)
+adds1 <- adds1 %>% select(STUDYID,USUBJID, VISIT,VISITNUM,DSSTDTC,SRCSEQ,APHASE,APHASEN)
+
+```
+#predecessor from adsl
+```{r}
+temp1 <- adsl %>%
+  select(USUBJID,SITEID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,SCRNFL,SAFFL,ITTEFL,PPROTFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT)
+# USUBJID==c("116482.000066","116482.000151","116482.000274","116482.000603")&,)
+
+# ds <- distinct(ds,USUBJID,.keep_all = T)
+
+  
+adds1 <- adds1 %>% left_join(temp1,by = "USUBJID")
+
+```
+## TRTP(16) #TRTPN(17) #TRTA(18) #TRTAN(19)
+```{r}
+adds1 <- adds1 %>% mutate(TRTP = TRT01P)
+adds1 <- adds1 %>% mutate(TRTPN = TRT01PN)
+adds1 <- adds1 %>% mutate(TRTA = TRT01A)
+adds1 <- adds1 %>% mutate(TRTAN = TRT01AN)
+```
+
+
+# ADT(30)
+```{r}
+a <- as.Date(adds1$DSSTDTC)
+adds1 <- adds1 %>% mutate(ADT = a)
+rm(a)
+```
+
+#If ADT>=ADSL.TRTSDT then ADT-ADSL.TRTSDT+1, else ADT-ADSL.TRTSDT.
+#ADY (33)
+```{r}
+adds1 <- adds1 %>% mutate(ADY= case_when(
+  ADT >= TRTSDT ~ ADT- TRTSDT +1,
+  TRUE ~ ADT - TRTSDT))
+```
+
+```{r}
+adds1 <- adds1 %>%
+  mutate(AVISIT = case_when(
+    (APHASE == "Screening" | APHASE == "Maintenance" ) & ADY <= 1 ~ "Baseline",
+    TRT01A == "Q2M" & ADY != "" & ADY <= 1 ~ "Screening",
+    TRT01A == "Q2M" & ADY >= 2  & ADY <= 84 ~ "Month 2",
+    TRT01A == "Q2M" & ADY >= 85 & ADY <= 140 ~ "Month 4",
+    TRT01A == "Q2M" & ADY >= 141 & ADY <= 196 ~ "Month 6",
+    TRT01A == "Q2M" & ADY >= 197 & ADY <= 252 ~ "Month 8",
+    TRT01A == "Q2M" & ADY >= 252 & ADY <= 308 ~ "Month 10",
+    TRT01A == "Q2M" & ADY >= 309 & ADY <= 364 ~ "Month 12",
+    TRT01A == "Q2M" & ADY >= 365 & ADY <= 420 ~ "Month 14",
+    TRT01A == "Q2M" & ADY >= 421 & ADY <= 476 ~ "Month 16",
+    TRT01A == "Q2M" & ADY >= 477 & ADY <= 532 ~ "Month 18",
+    TRT01A == "Q2M" & ADY >= 533 & ADY <= 588 ~ "Month 20",
+    TRT01A == "Q2M" & ADY >= 589 & ADY <= 644 ~ "Month 22",
+    TRT01A == "Q2M" & ADY >= 645 & ADY <= 700 ~ "Month 24",
+    TRT01A == "Q2M" & ADY >= 701 & ADY <= 820 ~ "Month 26"))
+```
+```{r}
+adds1 <- adds1 %>%
+  mutate(AVISITN = case_when(
+    AVISIT == "Baseline" ~ 0,
+    AVISIT == "Month 2" ~ 20,
+    AVISIT == "Month 4" ~ 40,
+    AVISIT == "Month 6" ~ 60,
+    AVISIT == "Month 8" ~ 80,
+    AVISIT == "Month 10" ~ 100,
+    AVISIT == "Month 12" ~ 120,
+    AVISIT == "Month 14" ~ 140,
+    AVISIT == "Month 16" ~ 160,
+    AVISIT == "Month 18" ~ 180,
+    AVISIT == "Month 20" ~ 200,
+    AVISIT == "Month 22" ~ 220,
+    AVISIT == "Month 24" ~ 240,
+    AVISIT == "Month 26" ~ 260))
+# aa <- adds1 %>% mutate(AVISIT= case_when(
+#   ADY =1 & DSSCAT == "STUDY TREATMENT DISCONTINUATION" & DSDECOD == "ADVERSE EVENT" & TRT01A =="Q2M" ~ 20))
+```
+
+#'PHSTAT'
+```{r}
+test_phstat <- temp %>% 
+  filter(DSSCAT == "PHASE CONCLUSION" & DSDECOD != "COMPLETED")
+``` 
+#'PHWRES'
+```{r}
+test_phwres <- temp%>% filter(DSSCAT == "PHASE CONCLUSION")
+```
+#'PHWSRES'
+```{r}
+test_phwsres <- temp %>% filter(DSSCAT  == "PHASE CONCLUSION")
+```
+#SCSTAT
+```{r}
+test_scstat <- temp %>% 
+  filter(DSSCAT == "STUDY CONCLUSION" & DSDECOD != "COMPLETED") %>% 
+  mutate(AVALC="WITHDRAWN") %>% rename(SRCDOM = DOMAIN) %>% 
+  mutate(PARAM = "STUDY: COMPLETION STATUS" , PARAMCD = "SCSTAT") %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM)
+```
+#SCWRES
+```{r}
+test_SCWRES <- temp %>% filter(DSSCAT == "STUDY CONCLUSION") %>% 
+  mutate(AVALC = DSDECOD, PARAM = "STUDY: WITHDRAWAL REASON" ,PARAMCD = "SCWRES", SRCVAR = "DSDECOD")%>% 
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+  
+```
+#'SCWSRES'
+```{r}
+test_SCWSRES <- temp %>% filter(DSSCAT == "STUDY CONCLUSION" & DSDECOD!= DSTERM) %>% 
+  mutate(AVALC = DSTERM,PARAM = "STUDY: WITHDRAWAL SUB REASON", PARAMCD = "SCWSRES",SRCVAR = "DSTERM")%>% 
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+```
+#'SFRES'
+```{r}
+test_sfres <- temp %>% filter(DSSCAT == "SCREEN") %>% 
+  mutate(AVALC = DSDECOD, PARAM = "SCREENING: REASON FOR FAILURE", PARAMCD = "SFRES",SRCVAR = "DSDECOD")%>% 
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+```
+#SFSRES
+```{r}
+test_sfsres <- temp %>% filter(DSSCAT == "SCREEN" & DSTERM != DSDECOD) %>% 
+  mutate(AVALC = DSTERM, PARAM = "SCREENING: SUB REASON FOR FAILURE", PARAMCD = "SFSRES",SRCVAR = "DSTERM")%>% 
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+  
+```
+#'SFSTAT'
+```{r}
+test_sfstat <- temp %>% filter(DSSCAT == "SCREEN" & DSDECOD != "COMPLETED") %>% 
+  mutate(AVALC = "FAILED", PARAM = "SCREENING: STATUS", PARAMCD = "SFSTAT")%>% 
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM)
+```
+#TCSTAT 
+```{r}
+test_tcstat <- temp %>% 
+  filter(DSSCAT == "STUDY TREATMENT DISCONTINUATION" & DSDECOD != "COMPLETED") %>% 
+  mutate(AVALC = "WITHDRAWN", PARAM = "TREATMENT: COMPLETION STATUS", PARAMCD = "TCSTAT")%>%
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM)
+
+```
+#'TCWRES'  
+```{r}
+test_tcwres <- temp %>% filter(DSSCAT == "STUDY TREATMENT DISCONTINUATION" ) %>% 
+  mutate(AVALC = DSDECOD , PARAM = "TREATMENT: WITHDRAWAL REASON", PARAMCD = "TCWRES",SRCVAR = "DSDECOD")%>%
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+```
+#'TCWSRES'
+```{r}
+test_tcwsres <- temp %>% filter(DSSCAT == "STUDY TREATMENT DISCONTINUATION"& DSTERM != DSDECOD) %>% 
+  mutate(AVALC = DSTERM, PARAM = "TREATMENT: WITHDRAWAL SUB REASON", PARAMCD = "TCWSRES", SRCVAR = "DSTERM")%>%
+  rename(SRCDOM = DOMAIN) %>% 
+  select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+```
+
+```{r}
+AVALC <- bind_rows(list(test_phstat,test_phwres,test_phwsres,test_scstat,test_SCWRES,test_SCWSRES,test_sfres,test_sfsres,test_sfstat,test_tcstat,test_tcwres,test_tcwsres))
+
+avalc <- distinct(.data = AVALC ) %>% select(USUBJID,DSSEQ,AVALC,PARAM,PARAMCD,SRCDOM,SRCVAR)
+
+avalc$SRCVAR[is.na(avalc$SRCVAR)] <- ""
+```
+
+#If DS.DSSCAT='SCREEN' then PARCAT1='SCREEN FAILURE', else set to DS.DSSCAT based on VLM attached to AVALC.
+```{r}
+temp2 <- temp %>% mutate(PARCAT1 = case_when(
+  DSSCAT == "SCREEN" ~ "SCREEN FAILURE",
+  DSSCAT == "STUDY CONCLUSION" ~ DSSCAT,
+  DSDECOD == "CONTINUATION TO FOLLOW UP PHASE" ~ "PHASE CONCLUSION",
+  DSSCAT == "STUDY TREATMENT DISCONTINUATION" ~ DSSCAT))
+```
+```{r}
+aaa <- temp2 %>%
+  mutate(PARCAT1N = case_when(
+  PARCAT1 == "STUDY CONCLUSION" ~ 1,
+  PARCAT1 == "SCREEN FAILURE" ~ 2,
+  PARCAT1 == "PHASE CONCLUSION" ~ 3,
+  PARCAT1 == "STUDY TREATMENT DISCONTINUATION" ~ 4)) %>% 
+  select(STUDYID,USUBJID,PARCAT1,PARCAT1N,DSSEQ)
+
+```
+```{r}
+adds1 <-left_join(adds1,avalc,by = c("USUBJID"="USUBJID","SRCSEQ"="DSSEQ"))
+adds1 <- distinct(adds1)
+adds1<- left_join(adds1,aaa, by = c("USUBJID"="USUBJID","SRCSEQ"="DSSEQ","STUDYID"="STUDYID"))
+adds1 <- distinct(adds1)
+```
+
+#SUPPDS.QVAL where SUPPDS.QNAM="FUCERTLM"
+```{r}
+x<- suppds %>% filter(QNAM == "FUCERTLM") %>% 
+  mutate(FUCERTLM = QNAM) %>% 
+  select(USUBJID,FUCERTLM)
+```
+#SUPPDS.QVAL where SUPPDS.QNAM="FUPCONT3"
+```{r}
+y <- suppds %>% filter(QNAM == "FUPCONT3") %>% 
+  mutate(FUPCONT3 = QNAM) %>% 
+  select(USUBJID,FUPCONT3)
+```
+If APHASE = "Maintenance" then: If ((TRT01A = "Q2M" and sDT <= max(LSTORLDT+1, LSTINJDT+67)) or (TRT01A = "DTG + RPV" and sDT <= LSTORLDT+1)) then TRTSTATE = "On-treatment"; else if ((TRT01A = "Q2M" and sDT > max(LSTORLDT+1, LSTINJDT+67)) or (TRT01A = "DTG + RPV" and sDT > LSTORLDT+1)) then TRTSTATE = "Post-treatment".
+If APHASE = "Long-Term Follow-Up" then: If sDT <= min(, max(LSTINJDT+67, LSTORLDT+1)) then TRTSTATE = "On-treatment"; else if sDT > min(LTARTSDT, max(LSTINJDT+67, LSTORLDT+1)) then TRTSTATE = "Post-treatment"
+
+#TRTSTATE
+```{r}
+
+adds1 <- adds1 %>% mutate(TRTSTATE = case_when(
+  APHASE == "Screening"  ~ "Pre-treatment",
+  APHASE == "Maintenance"  ~ "On-treatment",
+  APHASE == "Long-term Follow-up" ~ "Post-treatment"
+))
+# temp_adsl <-adsl %>% select(LSTORLDT,LSTINJDT,USUBJID)
+# temp_adsl <- left_join(adds1,temp_adsl, by = c("USUBJID"= "USUBJID"))
+
+# temp_adsl <- temp_adsl %>% mutate(TRTSTATE = 
+#   ifelse(APHASE == "Screening")  ~ "Pre-treatment",
+#   ifelse(APHASE == "Maintenance",
+#     ifelse(TRT01A == "Q2M" & ADT <= pmax(LSTORLDT+1, LSTINJDT+67))|(TRT01A == "DTG + RPV" & ADT > pmax(LSTORLDT+1)) ~ "On-treatment"),
+#   ifelse(TRT01A == "Q2M" & ADT > pmax(LSTORLDT+1, LSTINJDT+67))|(TRT01A == "DTG + RPV" & ADT > LSTORLDT+1) ~ "Post-treatment",
+#   ifelse(APHASE == "Long-term Follow-up",
+#     ifelse(TRTSDT> pmin(, pmax(LSTINJDT+67, LSTORLDT+1))~"On-treatment" ,
+#   ifelse(TRTSDT> pmin(LTARTSDT, pmax(LSTINJDT+67, LSTORLDT+1))~"Post-treatment"))))
+```
+```{r}
+a <- left_join(x,y,by = c("USUBJID"="USUBJID"))
+adds1 <- full_join(adds1,a, by = c("USUBJID" = "USUBJID"))
+adds1 <- distinct(adds1,.keep_all = T)
+adds1 <- adds1 %>% mutate(DTYPE = " ")
+
+```
+```{r}
+adds1 <- adds1 %>%  select(STUDYID,SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,SCRNFL,SAFFL,ITTEFL,PPROTFL,ENRLFL,LTFUFL,TRTP,TRTPN,TRTA,TRTAN,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT,VISIT,VISITNUM,APHASE,APHASEN,AVISIT,AVISITN,ADT,ADY,DSSTDTC,PARCAT1,PARCAT1N,PARAM,PARAMCD,AVALC,SRCDOM,SRCVAR,SRCSEQ,FUCERTLM,FUPCONT3,DTYPE,TRTSTATE)
+```
+```{r}
+
+adds1 <- apply_labels(adds1,TRTP = "Planned Treatment")
+adds1 <- apply_labels(adds1,TRTPN = "Planned Treatment (N)")
+adds1 <- apply_labels(adds1,TRTA = "Actual Treatment")
+adds1 <- apply_labels(adds1,TRTAN = "Actual Treatment (N)")
+adds1 <- apply_labels(adds1,APHASE="Phase")
+adds1 <- apply_labels(adds1,APHASEN="Phase (N)")
+adds1 <- apply_labels(adds1,APHASE="Phase")
+adds1 <- apply_labels(adds1,AVISIT="Analysis Visit")
+adds1 <- apply_labels(adds1,AVISITN="Analysis Visit (N)")
+adds1 <- apply_labels(adds1,ADT="Analysis Date")
+adds1 <- apply_labels(adds1,ADY="Analysis Relative Date")
+adds1 <- apply_labels(adds1,PARCAT1="Parameter Category 1")
+adds1 <- apply_labels(adds1,PARCAT1N="Parameter Category 1 (N)")
+adds1 <- apply_labels(adds1,PARAM="Parameter")
+adds1 <- apply_labels(adds1,PARAMCD="Parameter Code")
+adds1 <- apply_labels(adds1,AVALC="Analysis Value (C)")
+adds1 <- apply_labels(adds1,SRCDOM="Source Domain")
+adds1 <- apply_labels(adds1,SRCVAR="Source Variable")
+adds1 <- apply_labels(adds1,FUCERTLM="Follow-up Certified Letter Mailed")
+adds1 <- apply_labels(adds1,FUPCONT3="Follow-up Phone Contact Attempted x3")
+adds1 <- apply_labels(adds1,DTYPE="Derivation Type")
+adds1 <- apply_labels(adds1,TRTSTATE="Treatment State")
+rm(a,aaa,temp,temp1,temp2,test_phstat,test_phwres,test_phwsres,test_scstat,test_SCWRES,test_SCWSRES,test_sfres,test_sfsres,test_sfstat,test_tcstat,test_tcwres,test_tcwsres,x,y,ds_supds,avalc,AVALC)
+```
+
+
+

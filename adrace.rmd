@@ -1,0 +1,123 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "9/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##library loading
+```{r}
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(Hmisc)
+library(expss)
+```
+```{r}
+adrace <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adrace.sas7bdat",NULL)
+dm <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/dm.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL) 
+suppdm <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/suppdm.sas7bdat",NULL)
+```
+```{r}
+adrace1 <- dm %>% select(STUDYID,USUBJID)
+temp <- adsl %>% select(USUBJID,SITEID,LTSUBJID,AGE,AGEU,SEX,RACE,RACEN,COUNTRY,PPROTFL,SCRNFL,ITTEFL,SAFFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT,ARACE)
+adrace1 <- adrace1 %>% full_join(temp)
+```
+
+#SUPPDM.QVAL WHERE QNAM=RACEOR, RACEORX WHERE X =1,2,.... WHEN QVAL="AFRICAN AMERICAN/AFRICAN HERITAGE" REPORT AS "BLACK OR AFRICAN AMERICAN", WHEN QVAL="AMERICAN INDIAN OR ALASKAN NATIVE" REPORT AS "AMERICAN INDIAN OR ALASKA NATIVE".
+```{r}
+adrace11 <- suppdm %>% select(USUBJID,QNAM,QVAL) %>% 
+  filter(QNAM =="RACEOR" | QNAM =="RACEOR1" | QNAM =="RACEOR2") %>% 
+  rename(RACEOR = QVAL)
+adrace1 <- adrace1 %>% left_join(adrace11)
+adrace1$RACEOR[adrace1$RACEOR  == "AFRICAN AMERICAN/AFRICAN HERITAGE"]  <-  "BLACK OR AFRICAN AMERICAN"
+adrace1$RACEOR[adrace1$RACEOR  == "AMERICAN INDIAN OR ALASKAN NATIVE"]  <-  "AMERICAN INDIAN OR ALASKA NATIVE"
+
+label(adrace1$RACEOR) <- "Original Race"
+# rm(adrace11)
+```
+#TRTP,TRTPN,TRTA,TRTAN
+```{r}
+adrace1 <- adrace1 %>% mutate(TRTP = TRT01P)
+adrace1 <- adrace1 %>% mutate(TRTPN = TRT01PN)
+adrace1 <- adrace1 %>% mutate(TRTA = TRT01A)
+adrace1 <- adrace1 %>% mutate(TRTAN = TRT01AN)
+adrace1 <- apply_labels(adrace1,TRTP = "Planned Treatment")
+adrace1 <- apply_labels(adrace1,TRTPN = "Planned Treatment (N)")
+adrace1 <- apply_labels(adrace1,TRTA = "Actual Treatment")
+adrace1 <- apply_labels(adrace1,TRTAN = "Actual Treatment (N)")
+```
+#ASEQ
+```{r}
+adrace1 <- adrace1 %>% 
+  group_by(USUBJID) %>% 
+  mutate(ASEQ = row_number())
+label(adrace1$ASEQ)<- "Analysis Sequence Number"
+```
+#FOR ASIAN RACEOR VALUES, ALL TEXT AFTER THE DASH IS STRIPPED PRIOR TO CONCATENATION OR ASSIGNMENT. IF DM.RACE='ASIAN' ASSIGNED AS FOLLOWS (USING THE VALUES OF DM.RACEOR): SUBJECTS WHO SELECT ONE OR MORE OF JAPANESE HERITAGE, EAST ASIAN HERITAGE, AND SOUTH EAST ASIAN HERITAGE, AND NO OTHER ASIAN SUBCATEGORY, ARE ASSIGNED 'JAPANESE HERITAGE/EAST ASIAN HERITAGE/SOUTH EAST ASIAN HERITAGE'; SUBJECTS WHO SELECT CENTRAL/SOUTH ASIAN HERITAGE AND ANY OTHER ASIAN SUBCATEGORY ARE ASSIGNED 'MIXED ASIAN RACE'; SUBJECTS WHO SELECT ONLY CENTRAL/SOUTH ASIAN HERITAGE ARE ASSIGNED 'CENTRAL/SOUTH ASIAN HERITAGE'. IF DM.RACE='WHITE' AND MORE THAN ONE SUBCATEGORY IS PRESENT ASSIGN AS 'MIXED WHITE RACE';. IF DM.RACE='MULTIPLE' THEN RACECOMB IS THE CONCATENATION OF ALL DM.RACEX IN ALPHABETICAL ORDER.
+```{r}
+test <- adrace1 %>% 
+  select(ASEQ,RACE,ARACE,ASEQ,RACEOR) %>% 
+  mutate(raceor_pre = sub("-.*","", RACEOR)) %>% 
+  mutate(raceor_sup = sub(".*-","",RACEOR))
+test1 <- test %>% filter(RACE == "ASIAN") %>% 
+  mutate(RACECOMP = case_when(
+    (raceor_sup == "JAPANESE HERITAGE" | raceor_sup == "EAST ASIAN HERITAGE" | raceor_sup ==  "SOUTH EAST ASIAN HERITAGE")~ "JAPANESE HERITAGE/EAST ASIAN HERITAGE/SOUTH EAST ASIAN HERITAGE",
+    raceor_sup == "CENTRAL/SOUTH ASIAN HERITAGE" ~ "CENTRAL/SOUTH ASIAN HERITAGE",
+    TRUE ~ "MIXED ASIAN RACE")) %>% 
+  select(USUBJID,ASEQ,RACECOMP)
+test2 <- test %>% 
+  filter(ARACE == "MULTIPLE") %>% 
+  arrange(raceor_pre) %>% 
+  group_by(USUBJID) %>% 
+  mutate(RACECOMP= paste0(raceor_pre,collapse = " & ")) %>% 
+  select(USUBJID,ASEQ,RACECOMP)
+test1 <- test %>% full_join(test2) 
+test1$RACECOMP[is.na(test1$RACECOMP)]<- ""
+test1$RACECOMP <- as.character(test1$RACECOMP)
+adrace1$RACECOMP <- as.character(adrace1$RACECOMP)
+
+adrace1 <- full_join(test1,adrace1) 
+adrace1 <- adrace1 %>% select(-raceor_pre,-raceor_sup)
+
+```
+#FOR DM.RACE='WHITE' OR 'ASIAN', IF SUBJECT HAS MORE THAN ONE DM.RACEOR VALUE SET TO 'MIXED WHITE RACE' OR 'MIXED ASIAN RACE', RESPECTIVELY; FOR DM.RACE='MULTIPLE' ASSIGNED AS THE CONCATENATION OF ALL ADRACE.RACEOR VALUES FOR THAT SUBJECT, SEPARATING EACH VALUE WITH " & ".
+
+```{r}
+test <- adrace1 %>% 
+  select(USUBJID,ASEQ,RACE,RACEOR,ARACE) %>% 
+  mutate(raceor_pre = sub("-.*","", RACEOR)) %>% 
+  mutate(raceor_sup = sub(".*-","",RACEOR))
+test1 <- test %>% 
+    filter(RACE== "WHITE" | RACE == "ASIAN") %>% 
+    mutate(RACECDET = raceor_sup)
+test1$RACECDET <- as.character(test1$RACECDET)
+
+test2 <- test %>% 
+    filter(ARACE == "MULTIPLE") %>% 
+    arrange(raceor_pre) %>% 
+    group_by(USUBJID) %>% 
+    mutate(RACECDET= paste0(raceor_pre,collapse = " & ")) %>% 
+    select(USUBJID,ASEQ,RACECDET)
+test1 <- test1 %>% full_join(test2) %>% select(USUBJID,ASEQ,RACECDET)
+adrace1 <- full_join(test1,adrace1) %>% distinct()
+adrace1 <- adrace1 %>% select(-QNAM)
+rm(adrace11,temp,test,test1,test2)
+adrace1$RACECDET[is.na(adrace1$RACECDET)] <- " "
+```
+```{r}
+adrace1$RACECOMP[is.na(adrace1$RACECOMP)] <- " "
+```
+```{r}
+adrace1 <- adrace1 %>% select(STUDYID,SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,RACEN,COUNTRY,PPROTFL,SCRNFL,ITTEFL,SAFFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTP,TRTPN,TRTA,TRTAN,TRTSDT,TRTEDT,MNTEDT,ASEQ,ARACE,RACEOR,RACECOMP,RACECDET)
+adrace1<- apply_labels(adrace1,RACECOMP = "Race and Racial Combinations")
+adrace1<- apply_labels(adrace1, RACECDET= "Race and Racial Combination Details")
+
+```
+
