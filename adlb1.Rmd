@@ -1,0 +1,82 @@
+---
+title: "adbl"
+author: "Smriti karki"
+date: "8/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##loading library  
+```{r}
+library(haven)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(dplyr)
+
+```
+##importing files
+```{r}
+lb <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/lb.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adlb <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adlb.sas7bdat",NULL)
+
+```
+##create adlb file
+```{r}
+adlb1 <- lb %>% select(STUDYID,USUBJID,LBSEQ,LBTESTCD,LBCAT,LBORRES,LBORRESU,LBSTRESC,LBSTRESN,LBSTRESU,LBSTNRLO,LBSTNRHI,LBBLFL,LBFAST,LBDY,VISIT,VISITNUM,LBDTC)
+rm <- adsl %>%  select(USUBJID,SITEID,LTSUBJID,AGE,AGEU,RACE,SEX,COUNTRY,SAFFL,ITTEFL,SCRNFL,PPROTFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,MNTEDT,TRTSDT,TRTEDT)
+adlb1 <- adlb1 %>% left_join(rm)
+rm(rm)
+```
+##TRTP(20)
+```{r}
+adlb1 <- adlb1 %>% mutate(TRTP = TRT01P)
+```
+##TRTPN(21)
+```{r}
+adlb1 <- adlb1 %>% mutate(TRTPN = TRT01PN)
+```
+##TRTA(22)
+```{r}
+adlb1 <- adlb1 %>% mutate(TRTA = TRT01A)
+```
+##TRTAN(23)
+```{r}
+adlb1 <- adlb1 %>% mutate(TRTAN = TRT01AN)
+```
+##If time is collected then ADT=numeric date part of LB.LBDTC, else if time is not collected then ADT is the numeric version of LB.LBDTC.
+##ADT(48)
+```{r}
+rm <- adlb1 %>% mutate(ADT = as.Date(LBDTC))
+adlb1 <- adlb1 %>% full_join(rm)
+rm(rm)
+```
+##If ADT>=ADSL.TRTSDT then ADT-ADSL.TRTSDT+1, else ADT-ADSL.TRTSDT.
+##ADY(49)
+```{r}
+adlb1 <- adlb1 %>% mutate(ADY = case_when(
+  ADT >= TRTSDT ~ ADT - TRTSDT + 1,
+  TRUE ~ ADT - TRTSDT))
+```
+##PARCAT1(50)
+```{r}
+adlb1 <- adlb1 %>% mutate(PARCAT1 = LBCAT)
+```
+##PARCAT1N(51)
+```{r}
+adlb1 <- adlb1 %>% mutate(PARCAT1N = case_when(
+  PARCAT1 == "CHEMISTRY" ~ 1,
+  PARCAT1 == "COAGULATION" ~2,
+  PARCAT1 == "DRUG SCREENING" ~3,
+  PARCAT1 == "HEMATOLOGY" ~4,
+  PARCAT1 == "IMMUNOLOGY" ~5,
+  PARCAT1 == "URINALYSIS" ~6,
+  PARCAT1 == "VIROLOGY" ~7))
+```
+
+
+
