@@ -1,0 +1,136 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "10/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(haven)
+library(pivottabler)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(magrittr)
+library(pagedown)
+```
+```{r}
+adsu <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsu.sas7bdat",NULL)
+
+col2 <- adsu %>% filter(PARAM=="History of illicit non-IV drug use") %>%
+   group_by(TRT01P) %>% 
+  dplyr::count(AVALC)  %>% 
+  pivot_wider(names_from = TRT01P, values_from = n)
+col2$`DTG + RPV`[is.na(col2$`DTG + RPV`)] <- 0
+col2$Q2M[is.na(col2$Q2M)]<- 0
+col2 <- col2 %>% mutate(Total = `DTG + RPV`+ Q2M)
+col2 <- col2 %>%
+  mutate(dtg = paste0(round(`DTG + RPV` / sum(`DTG + RPV`) * 100), "%"))%>% 
+  mutate(q2m = paste0(round(Q2M / sum(Q2M) * 100), "%")) %>% 
+  mutate(total = paste0(round(Total / sum(Total) * 100), "%"))
+col2$dtg <- assertive.base::parenthesise(col2$dtg)
+col2$q2m <- assertive.base::parenthesise(col2$q2m)
+col2$total <- assertive.base::parenthesise(col2$total)
+col2 <- col2 %>% 
+  unite("DTG + RPV", c(`DTG + RPV`,dtg),sep = "  ") %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+col2 <- col2 %>%  add_row(AVALC= "History of illicit non-IV drug use",`DTG + RPV`="",Q2M="",Total="", .before = 1,.after = NULL)
+col2 <- col2 %>% add_row(AVALC="n",`DTG + RPV`="7",Q2M="90",Total="97",.before = 2)
+
+# line2 <- data.frame("n",7,90,97) 
+# names(line2) <- c("AVALC","DTG + RPV","Q2M","Total")
+col2 <- col2 %>%  add_row(AVALC= "History of illicit IV drug use",`DTG + RPV`="",Q2M="",Total="")
+col2 <- col2 %>% add_row(AVALC="n",`DTG + RPV`="7",Q2M="90",Total="97")
+
+
+col3 <- adsu %>% filter(PARAM=="History of illicit IV drug use") %>%
+   group_by(TRT01P) %>% 
+  dplyr::count(AVALC) %>% 
+  pivot_wider(names_from = TRT01P, values_from = n)
+col3$`DTG + RPV`[is.na(col3$`DTG + RPV`)] <- 0
+col3 <- col3 %>% mutate(Total = `DTG + RPV`+ Q2M)
+x <- sum(col3$`DTG + RPV`)
+y <- sum(col3$Q2M)
+t <- sum(col3$Total)
+col3 <- col3 %>%
+  mutate(dtg = scales::percent(`DTG + RPV`/x)) %>% 
+  mutate(q2m = scales::percent(Q2M/y)) %>% 
+  
+  mutate(total = scales::percent(Total/t))
+col3$dtg <- assertive.base::parenthesise(col3$dtg)
+col3$q2m <- assertive.base::parenthesise(col3$q2m)
+col3$total <- assertive.base::parenthesise(col3$total)
+col3 <- col3 %>% 
+  unite("DTG + RPV", c(`DTG + RPV`,dtg),sep = "  ") %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+col3 <- col3 %>% add_row(AVALC="Current User",`DTG + RPV`="0",Q2M="0",Total="0", .before = 2, .after = NULL)
+
+line1<- c("History of smoking use","","","")
+line2 <- c("n",7,90,97)
+col3 <- col3 %>% rbind(line1)
+col3 <- col3 %>% rbind(line2)
+
+
+col4 <- adsu %>% filter(PARAM=="History of smoking use") %>%
+   group_by(TRT01P) %>% 
+  dplyr::count(AVALC) %>% 
+  pivot_wider(names_from = TRT01P, values_from = n)
+col4$`DTG + RPV`[is.na(col4$`DTG + RPV`)] <- 0
+col4 <- col4 %>% mutate(Total = `DTG + RPV`+ Q2M)
+x <- sum(col4$`DTG + RPV`)
+y <- sum(col4$Q2M)
+col4 <- col4 %>%
+  mutate(dtg = scales::percent(`DTG + RPV`/x)) %>% 
+  mutate(q2m = scales::percent(Q2M/y)) %>% 
+  mutate(total = paste0(round(Total / sum(Total) * 100), "%"))
+col4$dtg <- assertive.base::parenthesise(col4$dtg)
+col4$q2m <- assertive.base::parenthesise(col4$q2m)
+col4$total <- assertive.base::parenthesise(col4$total)
+col4 <- col4 %>% 
+  unite("DTG + RPV", c(`DTG + RPV`,dtg),sep = "  ") %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
+  unite("Total", c(Total,total),sep = "  ")
+col4 <- col4[-c(1),] 
+col4 <- col4%>%  add_row(AVALC="Former Smoker",`DTG + RPV` = "2  (29%)", Q2M = "18  (20%)", Total = "20  (21%)")
+  
+table_2 <- dplyr::bind_rows(col2, col3,col4) 
+
+
+library(data.table)
+
+# table_2 <- table_2 %>% 
+#   setnames("",
+#            paste0("Q2M <br/> (N = ",sum(is.numeric(table_2$Q2M)),")"),
+#            paste0("DTG + RPV <br/> (N = ", sum(is.numeric(table_2$`DTG + RPV`)),")"),
+#            paste0("Total <br/> (N = ",sum(is.numeric(table_2$Total)),")"))
+
+
+
+
+
+
+
+table_2 <-setnames(table_2, "Q2M", "Q2M <br/>  (N= 90) ")
+table_2 <-setnames(table_2, "DTG + RPV", "DTG + RPV  (N= 7) ")
+table_2 <-setnames(table_2, "Total", "Total (N= 97) ")
+
+  
+```
+```{r, results= "asis"}
+
+kableExtra::kbl(table_2, caption = "", align = "l", escape = F, bootstrap_options = "basic") %>%
+  kableExtra::kable_minimal(full_width = F, html_font = "Courier New") %>% 
+  kableExtra::column_spec(3, extra_css = "") 
+table_2 %>% knitr::kable(caption = "<center> Table 1.27 <br/> Summary of Substance Use at Entry </center> <br/>")
+table_2
+
+```
+
+
+
