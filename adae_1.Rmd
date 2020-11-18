@@ -1,0 +1,468 @@
+---
+title: "adae"
+author: "Smriti karki"
+date: "7/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##loading library
+```{r}
+library(haven)
+library(readr)
+library(readxl)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+
+```
+
+## read SDTM raw file (importing files)
+```{r}
+ae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/ae.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+suppae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/suppae.sas7bdat",NULL)
+ex <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/ex.sas7bdat",NULL)
+faae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/sdtm/faae.sas7bdat",NULL)
+adae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adae.sas7bdat",NULL)
+```
+# create adae_1 file
+```{r}
+
+adae_1 <- ae %>% select(STUDYID,USUBJID, AESTDTC , AEENDTC, AESEQ, AEDECOD, AETERM, AEDECOD, AEBODSYS, AEBDSYCD, AELLT, AELLTCD, AEPTCD, AEHLT, AEHLTCD, AEHLGT, AEHLGTCD, AESOC, AESOCCD, AEACN, AEREFID, AESER, AEOUT, AEREL, AETOXGR, AECAT, AESHOSP, AESDTH, AESMIE, AESLIFE, AESCONG,AESDISAB)
+
+rm1 <- adsl %>% select(SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,PPROTFL,SCRNFL,SAFFL,ENRLFL,ITTEFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT,HISDEP,HISDEPFL,HISSUI,HISSUIFL,HISANX,HISANXFL,MNTSDT)
+adae_1 <- adae_1 %>% full_join(rm1) %>% na.omit(adae_1)
+
+
+rm(rm1)
+
+# rm2 <- ae %>% slice(c(1:1144))
+# rm3 <- ae %>% slice(c(1151))
+# rm4 <- ae %>% slice(c(1146:1150))
+# rm5 <- ae %>% slice(c(1145))
+# rm6 <- ae %>% slice(c(1152:1242))
+# ae_o <-rbind(rm2,rm3,rm4,rm5,rm6)
+# ae_o <- ae_o %>% mutate(id = row_number()) %>% relocate(id,.before = STUDYID)
+
+# rm2 <- ae %>% 
+#   select(STUDYID, USUBJID) %>% 
+#   mutate(ID = row_number())
+# 
+# demo<- adae %>% 
+#   select(USUBJID) %>% 
+#   mutate(ID = row_number())
+# 
+# demo_finla <- left_join(demo, rm2, by=NULL, copy=FALSE)
+# adae_ID <-adae %>% 
+#   mutate(row_number()) %>% 
+#   slice(-c(1228))
+
+
+
+```
+##TRTP(20)
+```{r}
+adae_1 <- adae_1 %>% mutate(TRTP=TRT01P)
+```
+##TRTPN(21)
+```{r}
+adae_1 <- adae_1 %>% mutate(TRTPN = TRT01PN)
+```
+##TRTA(22)
+```{r}
+adae_1 <- adae_1 %>% mutate(TRTA = TRT01A)
+```
+##TRTAN(24)
+```{r}
+adae_1 <- adae_1 %>% mutate(TRTAN = TRT01AN)
+```
+
+
+
+
+```{r}
+adae_1 <- adae_1 %>% mutate(id = row_number())
+
+```
+If TRT01A = "Q2M" and LSTINJDT is not missing and sDT > max(LSTINJDT, LSTORLDT) then APHASE = "Long-Term Follow-Up".
+For AEs leading to withdrawal and TRT01A = "Q2M" and sDT = LTARTSDT then APHASE = "Maintenance", not "Long-term Follow-up".
+Other than the above exception, each record can be associated with both APHASE = "Maintenance" and "Long-Term Follow-Up" at the same time and DTYPE is set to "PHANTOM" for any extra records created
+```{r}
+# rm3 <- adae_1
+# rm3 <- rm3 %>% mutate(APHASE = case_when(
+#   ASTDT < MNTSDT ~ "Screening",
+#   (TRT01A == "Q2M" & MNTSDT <= ASTDT & adsl$LTARTSDT >= ASTDT)|
+#     (TRT01A == " DTG + RPV" & MNTSDT <= ASTDT & adsl$MTH12SDT>= ASTDT) ~"Maintenance",
+#   TRT01A == "Q2M" & !(is.na(adsl$LSTINJDT)) & ASTDT > max(adsl$LSTINJDT,adsl$LSTORLDT) ~"Long-Term Follow-Up"))
+# rm(rm3)
+```
+##If the start day is missing, the first of the month will be used unless this is before the start date of study treatment; in this case the study treatment start date will be used.(36)
+```{r}
+
+rm36 <- adae_1
+rm36$a <- rm36$AESTDTC
+rm36$AESTDTC <- lubridate::ymd(rm36$AESTDTC,truncated = 1)
+rm36 <- rm36 %>%  mutate(ASTDT = case_when(
+  is.na(ymd(a))&
+  AESTDTC < TRTSDT ~ TRTSDT,
+ TRUE ~ AESTDTC)) %>% select(id,ASTDT)
+adae_1 <- adae_1 %>%  full_join(rm36)
+rm(rm36)
+```
+##DDMONYYYY format of non-missing AE.AESTDTC. If date is partial then replace missing elements with -
+##ASTDTC(37)
+```{r}
+rm4 <- adae_1
+rm4$AESTDTC <- ymd(rm4$AESTDTC)
+rm4 <- rm4 %>% mutate(ASTDTC = AESTDTC)
+rm4$ASTDTC <- toupper(format(rm4$ASTDTC,"%d%b%Y"))
+rm4$ASTDTC[is.na(rm4$ASTDTC)] <- "-"
+rm4 <- rm4 %>% select(id,ASTDTC)
+adae_1 <- adae_1 %>% full_join(rm4)
+rm(rm4)
+```
+##"Y" if the entire ASTDT or year is imputed. "M" if month and day are imputed in ASTDT. "D" if only day is imputed. Null if no imputation done
+##ASTDTF(38)
+```{r}
+rm5 <- adae_1 
+rm5$AESTDTC_c <- rm5$AESTDTC
+rm5 <- rm5 %>% 
+  select(id,AESTDTC,AESTDTC_c,TRTSDT) %>% 
+  separate(AESTDTC_c, c("Y","M","D") , sep = "-")
+rm5 <- rm5 %>%  mutate(ASTDTF = case_when(
+  is.na(Y)|AESTDTC < TRTSDT ~ "Y",
+  is.na(M) & is.na(D) ~ "M",
+  is.na(D) & ymd(AESTDTC,truncated = 1 )>=TRTSDT ~ "D",
+  TRUE ~ ""))  %>% select(id,ASTDTF)
+adae_1 <- adae_1 %>% full_join(rm5)
+
+rm(rm5)
+
+```
+
+
+
+##If the end day is missing, the last day of the month will be used, unless this is after the last contact date, in this case the last contact date will be used.
+##AENDT(40)
+```{r}
+
+rm1 <- adae_1 %>% mutate(AENDT = case_when(
+  AEENDTC < TRTEDT ~ as.Date(AEENDTC),
+  AEENDTC >= TRTEDT ~ as.Date(TRTEDT))) %>% select(id,AENDT)
+adae_1 <- adae_1 %>% full_join(rm1)
+rm(rm1)
+```
+##DDMONYYYY format of non-missing AE.AEENDTC. If date is partial then replace missing elements with -.
+##AENDTC (41)
+```{r}
+rm41 <- adae_1
+rm41$AEENDTC <- ymd(rm41$AEENDTC)
+rm41 <- rm41 %>% mutate(AENDTC = AEENDTC)
+rm41$AENDTC <- toupper(format(rm41$AEENDTC,"%d%b%Y"))
+rm41$AENDTC[is.na(rm41$AENDTC)] <- "-"
+rm41 <- rm41 %>% select(id,AENDTC)
+adae_1 <- adae_1 %>% full_join(rm41)
+rm(rm41)
+```
+##"Y" if the entire AENDT or year is imputed. "M" if month and day are imputed in AENDT. "D" if only day is imputed. Null if no imputation done
+##AENDTF(42)
+```{r}
+rm42 <- adae_1
+rm42 <- rm42 %>% mutate(AENDTF = case_when(
+  is.na(AEENDTC) ~ "Y",
+  TRUE ~ " ")) %>% select(id, AENDTF)
+adae_1 <- adae_1 %>% full_join(rm42)
+rm(rm42)
+```
+##If ASTDT>=ADSL.TRTSDT then ASTDT-ADSL.TRTSDT+1, else ASTDT-ADSL.TRTSDT.(43)
+```{r}
+adae_1 <- adae_1 %>% mutate(ASTDY = case_when(
+  ASTDT >=TRTSDT ~ (ASTDT- TRTSDT)+1,
+  TRUE ~ ASTDT- TRTSDT))
+
+```
+##If AENDT>=ADSL.TRTSDT then AENDT-ADSL.TRTSDT+1, else AENDT-ADSL.TRTSDT.
+##AENDY(44)
+```{r}
+rm<- adae_1 %>% mutate(AENDY = case_when(
+  AENDT >= TRTSDT ~ AENDT - TRTSDT+1,
+  TRUE ~ AENDT - TRTSDT)) %>% select(id,AENDY)
+adae_1 <- adae_1 %>% full_join(rm)
+rm(rm)
+
+```
+##AENDT-ASTDT) +1
+##ADURN(59)
+```{r}
+adae_1 <- adae_1 %>% mutate(ADURN = (AENDT - ASTDT) + 1)
+
+#identical(adae_1$ADURN, adae_ID$ADURN)
+```
+
+
+##"DAYS" WHEN ADURN NOT MISSING, OTHERWISE BLANK
+##ADURU(60)
+
+```{r}
+rm1 <- adae_1
+rm1 <- rm1 %>% mutate(ADURU = case_when(
+  !is.na(ADURN) ~ "DAYS",
+  TRUE ~ "")) %>% select(id,ADURU)
+adae_1 <- adae_1 %>% full_join(rm1) 
+rm(rm1)
+
+```
+##Character version of ADURN in days concatenated with 'd'
+##ADURC(61)
+```{r}
+
+rm1 <- adae_1 %>% select(USUBJID,id,ADURN) %>%  mutate(ADURC = case_when(
+  !is.na(ADURN) ~ paste(ADURN, "d",sep = ""),
+  TRUE ~ "") ) %>% select(ADURC)
+adae_1 <- adae_1 %>% mutate(ADURC= rm1$ADURC)
+rm(rm1)
+```
+
+##WHEN AEOUT= "RECOVERED/RESOLVED" THEN SET AEOUTN= 1; WHEN AEOUT= "RECOVERING/RESOLVING" THEN SET AEOUTN= 2; WHEN AEOUT= "NOT RECOVERED/NOT RESOLVED" THEN SET AEOUTN= 3; WHEN AEOUT= "RECOVERED/RESOLVEDWITH SEQUELAE" THEN SET AEOUTN= 4; WHEN AEOUT= "FATAL" THEN SET AEOUTN= 5;(66)
+```{r}
+adae_1 <- adae_1 %>% mutate(AEOUTN= case_when(
+  AEOUT == "RECOVERED/RESOLVED" ~ 1,
+  AEOUT == "RECOVERING/RESOLVING" ~ 2,
+  AEOUT == "NOT RECOVERED/NOT RESOLVED" ~ 3,
+  AEOUT == "RECOVERED/RESOLVED WITH SEQUELAE"~ 4,
+  AEOUT == "FATAL" ~ 5))
+```
+
+```{r}
+# IDVARVAL <- as.numeric(suppae$IDVARVAL)
+# rm8 <- suppae %>% select(QNAM,QVAL,IDVAR,IDVARVAL,USUBJID)
+# rm8 <- rm8 %>% filter(IDVAR == "AEREFID") %>%
+#   mutate(AEREFID = case_when(
+#   IDVAR == "AEREFID" ~ IDVARVAL))
+# rm8 <- adae_1 %>% full_join(rm8)
+# rm(rm8)
+# ae1 <- adae_1 %>% left_join(rm8) 
+# rm(ae1,rm8)
+```
+##SUPPAE.QVAL WHERE SUPPAE.QNAM='GRADED'
+##AETOX(69)
+
+```{r}
+demo <- suppae %>% select(IDVARVAL,QNAM,QVAL,USUBJID) %>%
+  filter(QNAM == "GRADED") %>% mutate(AETOX = case_when(
+    QNAM == "GRADED" ~ QVAL)) %>% 
+  rename(AEREFID = IDVARVAL)
+demo <- adae_1 %>% full_join(demo,by = c("USUBJID","AEREFID")) %>% 
+  mutate(AETOX = case_when(
+  QNAM == "GRADED" ~ QVAL,
+  TRUE ~ "")) %>% select(AETOX,USUBJID)
+adae_1 <- adae_1 %>% mutate(AETOX = demo$AETOX)
+rm(demo)
+```
+##WHEN AETOX="NOT APPLICABLE" THEN SET AETOXGRN=0; WHEN AETOX="MILD OR GRADE 1" THEN SET AETOXGRN=1; WHEN AETOX="MODERATE OR GRADE 2" THEN SET AETOXGRN=2; WHEN AETOX="SEVERE OR GRADE 3" THEN SET AETOXGRN=3;WHEN AETOX="POTENTIALLY LIFE-THREATENING OR GRADE 4" THEN SET AETOXGRN=4; WHEN AETOX="DEATH OR GRADE 5" THEN SET AETOXGRN=5;(70)
+
+```{r}
+demo <- adae_1 %>% select(USUBJID,AEREFID,AETOX) %>% 
+  mutate(AETOXGRN = case_when(
+  AETOX=="Not applicable" ~ 0,
+  AETOX=="Mild or Grade 1" ~ 1,
+  AETOX=="Moderate or Grade 2" ~ 2,
+  AETOX=="Severe or Grade 3" ~ 3,
+  AETOX=="Potentially Life-Threatening or Grade 4" ~ 4,
+  AETOX=="Death or grade 5" ~ 5))
+adae_1 <- adae_1 %>% mutate(AETOXGRN = demo$AETOXGRN)
+```
+
+##For maintenance and long-term follow-up phases only, Concatenate character of "AE Start Date - Maintenance Treatment Start Date + 1" with "d".
+## AFTRTSTC(71)
+```{r}
+rm2 <- adae_1
+rm2$MNTSDT_1 <- rm2$MNTSDT
+rm <- rm2$ASTDT-rm2$MNTSDT_1+1
+rm2 <-rm2 %>% mutate(AFTRTSTC=paste(rm,"d",sep = ""  ) )%>% select(id,AFTRTSTC)
+adae_1 <- adae_1 %>% full_join(rm2)
+rm(rm2 )
+
+```
+##For Maintenance and long-term follow-up phases only. Concatenate character of "AE Start Date - Date of Last Dose of Study Treatment prior to/on the Start Date of AE + 1" with "d". For Oral lead-in phase (or oral bridging) then days are counted as '1d'.
+##ALTRTSTC(72)
+```{r}
+
+  
+```
+##For Maintenance phase concatenate character of "AE Start Date - Maintenance Treatment Start Date + 1" with "d". For Long Term Follow-up phase concatenate character of "AE Start Date - Date of Last Dose of Study Treatment" with "d".
+
+##ATTRTSTC(73)
+```{r}
+adae_1 <- adae_1 %>% mutate(AESTDTC)
+```
+```{r}
+# adae_1$year <- year(ymd(adae_1$AESTDTC))
+# adae_1$month <- month(ymd(adae_1$AESTDTC))
+# adae_1$day <- day(ymd(adae_1$AESTDTC))
+# asdtc_missing <- adae_1 %>% filter(is.na(day))
+# asdtc_missing <- asdtc_missing %>% 
+#   mutate(ASDTC = case_when(
+#     is.na(asdtc_missing),
+#   ))
+```
+##If AEACN='DRUG WITHDRAWN' then AEWD='Yes', else 'No'
+##AEWD(74)
+```{r}
+adae_1 <- adae_1 %>% mutate(AEWD = case_when(
+  AEACN == "DRUG WITHDRAWN" ~ "Yes",
+  TRUE ~ "No"))
+```
+##AESRECHA(82)
+```{r}
+demo <- suppae %>% select(USUBJID,IDVARVAL,IDVAR,QNAM,QVAL) %>% 
+  filter(QNAM == "AESRECHA") %>% 
+  mutate(AESRECHA = case_when(
+    QNAM  == "AESRECHA" ~ QVAL)) %>%  rename(AEREFID = IDVARVAL)
+demo <- adae_1 %>% full_join(demo, by = c("USUBJID","AEREFID")) %>% 
+  mutate(AESRECHA = case_when(
+    QNAM == "AESRECHA" ~ QVAL,
+    TRUE ~ "")) %>% select(USUBJID,AESRECHA)
+adae_1 <- adae_1 %>% mutate(AESRECHA = demo$AESRECHA)
+rm(demo)
+
+```
+
+##SUPPAE.QVAL WHERE SUPPAE.QNAM="AESPROT"
+##AESPROT(83)
+```{r}
+demo <- suppae %>% select(USUBJID,QNAM,QVAL,IDVARVAL,IDVAR) %>% 
+  filter(QNAM == "AESPROT") %>% 
+  mutate(AESPROT = case_when(
+    QNAM  == "AESPROT" ~ QVAL)) %>% 
+  rename(AEREFID = IDVARVAL)
+demo <- adae_1 %>% full_join(demo, by = c("USUBJID","AEREFID")) %>% 
+  mutate(AESPROT = case_when(
+    QNAM == "AESPROT" ~ QVAL,
+    TRUE ~ ""))%>% select(AESPROT)
+adae_1 <- adae_1 %>% mutate(AESPROT = demo$AESPROT)
+rm(demo)
+```
+##SUPPAE.QVAL WHERE SUPPAE.QNAM="AESAFTRT"
+##AESAFTRT(84)
+```{r}
+demo <- suppae %>% select(USUBJID,QNAM,QVAL,IDVARVAL,IDVAR) %>% 
+  filter(QNAM == "AESAFTRT") %>% 
+  mutate(AESAFTRT = case_when(
+    QNAM == "AESAFTRT" ~ QVAL)) %>% 
+  rename(AEREFID = IDVARVAL)
+demo <- adae_1 %>% full_join(demo, by = c("USUBJID","AEREFID")) %>% 
+  mutate(AESAFTRT = case_when(
+    QNAM == "AESAFTRT" ~ QVAL,
+    TRUE ~ "")) %>% select(USUBJID,AESAFTRT)
+adae_1 <- adae_1 %>% mutate(AESAFTRT = demo$AESAFTRT)
+rm(demo)
+
+```
+##SUPPAE.QVAL WHERE SUPPAE.QNAM="AESREL"
+##AESREL(85)
+```{r}
+demo <- suppae %>% select(USUBJID,IDVARVAL,IDVAR,STUDYID,QNAM,QVAL) %>% 
+  filter(QNAM == "AESREL") %>% 
+  mutate(AESREL=case_when(
+    QNAM == "AESREL" ~QVAL)) %>% 
+  rename(AEREFID = IDVARVAL) 
+demo <- adae_1 %>% 
+  full_join(demo, by = c("USUBJID","AEREFID"))%>% 
+  mutate(AESREL = case_when(
+    QNAM == "AESREL" ~ QVAL,
+    TRUE ~ ""))%>% select(USUBJID,AEREFID,AESREL)
+adae_1 <- adae_1 %>% mutate(AESREL = demo$AESREL)
+rm(demo)
+```
+
+
+
+Populate only for records where AE.AECAT="INJECTION SITE REACTION" or (AE.AETERM contains "STUDY DRUG INJECTION SITE" and AE.AESER="Y"). For records where AE.AECAT="INJECTION SITE REACTION", 
+
+
+find the latest visit in EX where numeric date part of AE.AESTDTC is after or on numeric date part of EX.EXSTDTC and EX.EXROUTE="INTRAMUSCULAR". Find the side which the injection was administered, i.e. where EX.EXLAT=FAAE.FASTRESC (where FAAE.FATESTCD="AINJSITS"), then ALAT=EX.EXLAT. 
+
+
+For records where (AE.AETERM contains "STUDY DRUG INJECTION SITE" and AE.AESER="Y") if AE.AETERM contains "LEFT" then ALAT="LEFT", else if AE.AETERM contains "RIGHT" then ALAT="RIGHT".
+```{r}
+
+data<- ae 
+data <- data %>% filter((AECAT=="INJECTION SITE REACTION" | (AETERM=="STUDY DRUG INJECTION SITE" )&
+                                                              AESER=="Y"))
+
+data<- data %>% full_join(ex)
+
+
+data<- data %>% full_join(faae)
+
+data<- data %>% filter(AECAT=="INJECTION SITE REACTION")
+
+
+
+
+
+
+
+```
+
+```{r}
+alat_1 <- adae_1 %>% mutate(id = row_number())
+alat_1 <- alat_1 %>% mutate(new_id = paste(USUBJID, "-", AEREFID))
+
+
+alat_1 <- alat_1 %>% 
+  filter(AECAT== "INJECTION SITE REACTION" | (grepl("STUDY DRUG INJECTION SITE", AETERM)==T & AESER=='Y'))
+
+alat_1_aecat <- alat_1 %>%  
+  filter(AECAT == "INJECTION SITE REACTION") %>%  
+  select(id,new_id,USUBJID,AESTDTC)
+alat_1_aecat$AESTDTC <- ymd(alat_1_aecat$AESTDTC)
+
+alat_ex <-ex %>% mutate(id = row_number())
+alat_ex <- alat_ex %>% select(USUBJID,EXSTDTC,EXROUTE,EXLAT,id) %>%  filter(EXROUTE == "INTRAMUSCULAR")
+alat_ex$EXSTDTC <- ymd(format(as.Date(alat_ex$EXSTDTC)))
+
+faae_1 <- faae %>% mutate(new_id = paste(USUBJID, "-" ,FAREFID))
+faae_1 <- faae_1 %>% select(USUBJID,FAREFID,FASTRESC,FATESTCD,new_id) %>% filter(FATESTCD == "AINJSITS")
+
+alat_1_aecat <- alat_1_aecat %>% full_join(faae_1, by = c("new_id","USUBJID"))
+
+alat2 <- alat_1_aecat %>% full_join(alat_ex, by= c("id","USUBJID"))
+alat2 <- alat2 %>% mutate(ALAT = case_when(
+  alat2$AESTDTC >= alat2$EXSTDTC ~ EXLAT))
+rm(alat2)
+
+
+
+ 
+```
+##Populate only for records where AE.AECAT="INJECTION SITE REACTION" or (AE.AETERM contains "STUDY DRUG INJECTION SITE" and AE.AESER="Y"). Find the latest visit in EX where numeric date part of AE.AESTDTC is after or on numeric date part of EX.EXSTDTC and EX.EXROUTE="INTRAMUSCULAR". Find the drug taken on the same side as the location of the ISR, i.e. where EX.EXLAT=ALAT, then DRUG=EX.EXTRT. Note that if both drugs were administered to the same side, then DRUG will be blank.
+```{r}
+
+```
+
+
+
+##Merge ADAE with CQNAM dataset by AEDECOD and AEPTCD. Where ((AETERM includes 'STUDY DRUG INJECTION SITE' and AESER = 'Y') or (AEDECOD includes 'INJECTION SITE') or AECAT = 'INJECTION SITE REACTION') then assign CQ01NAM='Injection Site Reactions (ISR) from Study Drug Injections'. Where AESOC contains 'preg' or 'Preg', then assign CQ01NAM='Safety in Pregnancy'.
+
+```{r}
+rm11 <- adae_1 %>% select(AEDECOD,AEPTCD,AETERM,AESER,AECAT,AESOC,USUBJID) %>% filter((AETERM == "STUDY DRUG INJECTION SITE" & AESER == "Y")|AEDECOD == "Injection site"| AECAT == "INJECTION SITE REACTION")
+rm11 <- adae_1  %>% 
+  full_join(rm11, by = c("AEDECOD","AEPTCD","USUBJID","AETERM","AESER","AECAT")) %>% 
+  mutate(CQ01NAM = case_when(
+  (AETERM == "STUDY DRUG INJECTION SITE"  & AESER == "Y") |AEDECOD == "Injection site" | AECAT ==     "INJECTION SITE REACTION" ~ "Injection Site Reactions (ISR) from Study Drug Injections")) %>% select(USUBJID,CQ01NAM)
+rm(rm11)
+```
+
+
+
+
+
+
+    a <- adae %>% filter(SITEID!="236231");b<- adae_1 %>% filter(SITEID!="236231")
+
+
