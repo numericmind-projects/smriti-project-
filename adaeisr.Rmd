@@ -1,0 +1,138 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "10/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#loading library
+```{r}
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+```
+#loading dataset
+```{r} 
+adaeisr <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adaeisr.sas7bdat",NULL)
+adae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adae.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+```
+
+```{r}
+adaeisr1 <- adae %>% select(STUDYID,USUBJID,APHASE,APHASEN,AESTDTC,ASTDT,ASTDTC,ASTDTF,AEENDTC,AENDT,AENDTC,AENDTF,ASTDY,AENDY,AESEQ,AETERM,AEDECOD,AEBODSYS,AEBDSYCD,AELLT,AELLTCD,AEPTCD,AEHLT,AEHLTCD,AEHLGT,AEHLGTCD,AESOC,AESOCCD,ADURN,ADURU,ADURC,AEACN,AEREFID,AESER,AEOUT,AEOUTN,AEREL,AETOXGR,AETOX,AETOXGRN,AFTRTSTC,ALTRTSTC,ATTRTSTC,AEWD,AECAT,AESHOSP,AESDTH,AESMIE,AESLIFE,AESCONG,AESDISAB,AESRECHA,AESPROT,AESAFTRT,AESREL,ALAT,DRUG)
+temp <- adsl %>% select(SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,SCRNFL,SAFFL,ITTEFL,PPROTFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT,WEIGHTBL)
+
+adaeisr1 <- adaeisr1 %>% full_join(temp)
+adaeisr1 <- adaeisr1 %>% filter(APHASE== "Maintenance" & AETERM== "STUDY DRUG INJECTION SITE" & AESER== "Y" | AECAT=="INJECTION SITE REACTION")
+rm(temp)
+
+```
+```{r}
+adaeisr1$TRTP <- adaeisr1$TRT01P
+adaeisr1$TRTPN <- adaeisr1$TRT01PN
+adaeisr1$TRTA <- adaeisr1$TRT01A
+adaeisr1$TRTAN <- adaeisr1$TRT01AN
+```
+ If analysis AE end date is not missing then AENIMDY = analysis AE end date (ADAE.AENDT)  - date of first exposure to treatment (ADSL.TRTSDT) + 1. If analysis AE end date is missing then AENIMDY = date of last study contact -  date of first exposure to treatment (ADSL.TRTSDT) + 1. #AENIMDY(40)
+```{r}
+# temp <- adaeisr1 %>% mutate(AENIMDY = case_when(
+#   is.na(AENDT) ~ ls- TRTSDT + 1,
+#   TRUE ~ AENDT -TRTSDT + 1))
+```
+#ISRCAT(84)
+```{r}
+adaeisr1 <-  adaeisr1 %>% mutate(ISRCAT = case_when(
+  DRUG == "CAB LA" | DRUG == "RPV LA" ~ "CAB LA and/or RPV LA"))
+adaeisr1$ISRCAT[is.na(adaeisr1$ISRCAT)]<- ""
+```
+#ISRCATCD(85)
+```{r}
+adaeisr1 <- adaeisr1 %>% mutate(ISRCATCD = case_when(
+  ISRCAT == "CAB LA and/or RPV LA" ~ "ISRALL",
+  TRUE~ ""))
+```
+#If  1<=ADURN<=7 then '1-7', else if 8<=ADURN<=14 then '8'-14', else if ADURN>14 then '>14', else blank
+#AEDURGP(86)
+```{r}
+adaeisr1 <- adaeisr1 %>% mutate(AEDURGP= case_when(
+  ADURN >= 8 & ADURN <= 14 ~ "8-14",
+  ADURN >= 14 ~ ">14",
+ ADURN >=1 & ADURN <=7 ~ "1-7",
+ TRUE ~ ""))
+```
+#AEDURCD(87)
+```{r}
+adaeisr1 <- adaeisr1 %>% mutate(AEDURCD = case_when(
+  AEDURGP == "1-7" ~ 1,
+  AEDURGP == "8-14" ~ 2,
+  AEDURGP == ">14" ~ 3))
+```
+#Maximum ADURN by USUBJID and APHASE
+#MAXDUR(88)
+```{r}
+adaeisr1 <- adaeisr1 %>%
+  group_by(USUBJID,APHASE) %>% 
+  mutate(MAXDUR= max(ADURN)) %>% 
+  ungroup()
+```
+#CMAXDUR(89)
+```{r}
+adaeisr1 <- adaeisr1 %>% 
+  group_by(USUBJID,AEDECOD,APHASE) %>% 
+  mutate(CMAXDUR= max(ADURN)) %>% 
+  ungroup()
+```
+#If 1<=MAXDUR<=7 then '1-7', If 8<=MAXDUR<=14 then '8-14', If 14<MAXDUR then '>14', otherwise blank
+#MXSUBDR(90)
+```{r}
+adaeisr1 <- adaeisr1 %>% 
+  mutate(MXSUBDR = case_when(
+    MAXDUR >= 1 & MAXDUR <= 7 ~ "1-7",
+    MAXDUR >= 8 & MAXDUR <= 14 ~ "8-14",
+    MAXDUR >14 ~ ">14",
+    TRUE ~ ""))
+```
+#IF MXSUBDR =  '1-7' THEN 1, IF MXSUBDR =  '8-14' THEN 2, IF MXSUBDR ='>14' THEN 3, OTHERWISE MISSING
+#MXSBDRCD(91)
+```{r}
+adaeisr1 <- adaeisr1 %>% mutate(MXSBDRCD = case_when(
+  MXSUBDR == "1-7" ~ 1,
+  MXSUBDR == "8-14" ~2,
+  MXSUBDR == ">14" ~3))
+```
+
+#If 1<=CMAXDUR<=7 then '1-7', If 8<=CMAXDUR<=14 then '8-14', If 14<CMAXDUR then '>14', otherwise blank
+#CMXSBDR(92)
+```{r}
+adaeisr1 <- adaeisr1 %>% 
+  mutate(CMXSBDR = case_when(
+    CMAXDUR >= 1 & CMAXDUR<= 7 ~ "1-7",
+    CMAXDUR >=8 & CMAXDUR<= 14 ~ "8-14",
+    CMAXDUR >14 ~ ">14",
+    TRUE ~ ""))
+```
+#IF CMXSBDR =  '1-7' THEN 1, IF CMXSBDR =  '8-14' THEN 2, IF CMXSBDR ='>14' THEN 3, OTHERWISE MISSING
+#CMXSDRCD(93)
+```{r}
+adaeisr1 <- adaeisr1 %>% 
+  mutate(CMXSDRCD = case_when(
+    CMXSBDR == "1-7" ~1,
+    CMXSBDR == "8-14" ~2,
+    CMXSBDR == ">14" ~3))
+```
+#Y' if AETOXGRN in (3 4 5)
+#GR35FL(94)
+```{r}
+adaeisr1 <- adaeisr1 %>%
+  mutate(GR35FL = case_when(
+  AETOXGR == "3"| AETOXGR =="4" |AETOXGR == "5" ~"Y"))
+adaeisr1$GR35FL[is.na(adaeisr1$GR35FL)] <- ""
+```
+#EVERATE
+#NUMEVE
+
+
