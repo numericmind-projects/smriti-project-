@@ -1,0 +1,158 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "10/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#loading library
+```{r}
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+```
+
+```{r}
+demo <- read_sas("E:/Numeric mind/adam/rawdata/demo.sas7bdat",NULL)
+dm <- read_sas("E:/Numeric mind/adam/rawdata/dm.sas7bdat",NULL)
+investig <- read_sas("E:/Numeric mind/adam/rawdata/investig.sas7bdat",NULL)
+race <- read_sas("E:/Numeric mind/adam/rawdata/race.sas7bdat",NULL)
+dth <- read_sas("E:/Numeric mind/adam/rawdata/dth.sas7bdat",NULL)
+prvtrial <- read_sas("E:/Numeric mind/adam/rawdata/prvtrial.sas7bdat",NULL)
+
+exposure <- read_sas("E:/Numeric mind/adam/rawdata/exposure.sas7bdat",NULL)
+```
+```{r}
+dm1 <- demo %>%  left_join(investig)
+
+dm1 <- dm1 %>% left_join(prvtrial)
+dm1 <- dm1 %>% left_join(dth)
+dm1 <- dm1 %>% left_join(race)
+# exposure$SUBJID <- as.character(exposure$SUBJID)
+# dm1 <- dm1 %>% left_join(exposure)
+```
+
+#ASE WHEN PRVTRIAL.PTSTUDY IS NOT NULL AND PRVTRIAL.PTSUBJID IS NOT NULL THEN PRVTRIAL.PTSTUDY||'.'|| LPAD(PRVTRIAL.PTSUBJID,6,0) 
+ELSE TRIM(UPPER(DEMO.STUDYID))||'.'||LPAD(DEMO.SUBJID,6,'0')  END
+#SUBJID,SITEID
+```{r}
+dm1$PTSUBJID <-str_pad(dm1$PTSUBJID,6, pad = "0")
+dm1$USUBJID <- trimws(paste(dm1$PTSTUDY,".",dm1$PTSUBJID),which = c("both"))
+
+dm1 <- dm1[-c(9),]
+dm1$STUDYID<- trimws(dm1$STUDYID, which = c("both"))
+dm1$STUDYID <- toupper(dm1$STUDYID)
+dm1$SUBJID<-replace(dm1$SUBJID, dm1$SUBJID==29,"MULTIPLE")
+```
+#SITEID
+```{r}
+dm1 <- dm1 %>% rename(SITEID = CENTREID)
+
+dm1$COUNTRY <- toupper(dm1$COUNTRY)
+dm1$COUNTRY <- replace(dm1$COUNTRY,dm1$COUNTRY == "UNITED STATES", "USA") 
+dm1$COUNTRY <- replace(dm1$COUNTRY,dm1$COUNTRY == "CANADA", "CAN")
+dm1$INVID <- replace(dm1$INVID, is.na(dm1$INVID)== T,dm1$INVID)
+dm1$INVNAME <- replace(dm1$INVNAME, is.na(dm1$INVNAME)== T,dm1$INVNAME)
+dm1 <- dm1 %>% rename(INVNAM= INVNAME) 
+dm1$INVNAM <- toupper(dm1$INVNAM)
+```
+
+
+TRIM(UPPER(INVESTIG.INVNAME))
+```{r}
+# race$SUBJID <- as.character(race$SUBJID)
+
+dm1 <- dm1 %>% 
+  mutate(RACE = case_when(
+    RACECCD == 13| RACECCD == 14 |RACECCD == 15 |RACECCD == 16 ~ "ASIAN",
+    RACECCD == 18 | RACECCD == 19 ~ "WHITE",
+    TRUE ~ "MULTIPLE")) 
+```
+
+```{r}
+
+dm1 <- dm1 %>% rename(DTHDTC = DDDT)%>%
+  mutate(DTHFL = "")
+
+# 
+# demo1$DTHDTC[is.na(demo1$DTHDTC)]<- na.omit(demo1$DTHDTC)
+```
+#ETHNIC
+```{r}
+dm1 <- dm1 %>% mutate(ETHNIC = case_when(
+  ETHNICCD == 1 ~ "HISPANIC OR LATINO",
+  ETHNICCD == 2 ~ "NOT HISPANIC OR LATINO"))
+```
+CASE
+WHEN LENGTH(REPLACE(TRIM(DEMO.DOBD_),'-')) = 9 THEN TO_CHAR(TO_DATE(DEMO.DOBD_,'DDMONYYYY'),'YYYY-MM-DD')
+WHEN LENGTH(REPLACE(TRIM(DEMO.DOBD_),'-')) = 7 THEN TO_CHAR(TO_DATE(REPLACE(TRIM(DEMO.DOBD_),'-'),'MONYYYY'),'YYYY-MM')
+WHEN LENGTH(REPLACE(TRIM(DEMO.DOBD_),'-')) = 6 THEN TO_CHAR(TO_DATE(REPLACE(TRIM(DEMO.DOBD_),'-'),'DDYYYY'),'YYYY---DD')
+WHEN LENGTH(REPLACE(TRIM(DEMO.DOBD_),'-')) = 5 THEN TO_CHAR(TO_DATE(REPLACE(TRIM(DEMO.DOBD_),'-'),'DDMON'),'--MM-DD')
+when length(replace(TRIM(DEMO.DOBD_),'-')) = 4 then TRIM(replace(TRIM(DEMO.DOBD_),'-'))
+END
+#SEX
+```{r}
+# dm1 <- dm1 %>% rename(SEX = GENDERCD)
+dm1 <- dm1 %>% mutate(BRTHDTC=sub(".*-","", DOBD_))
+dm1$BIRTHDTC <- as.character(dm1$BIRTHDT)
+
+```
+left join(SELECT SUBJID SUBJID6, MIN(CASE WHEN EXSTDT IS NOT NULL THEN 
+NVL2(EXSTDT,TO_CHAR(EXSTDT,'YYYY-MM-DD'),'-----')||RPAD('T',1+MOD(8-LENGTH(TRIM(EXSTTM)),3),'0')||TRIM(EXSTTM)END)AS RFSTDTC,
+
+```{r}
+library(lubridate)
+temp <-  exposure%>% separate(EXSTTM,c("a","b","c")) %>% unite("EXSTTM",a:b)
+temp$EXSTDT <- as.character(temp$EXSTDT)
+
+#   
+# 
+temp$EXSTTM<- gsub("_",":",temp$EXSTTM)
+temp$EXSTTM <- as.character(temp$EXSTTM)
+
+temp <- temp %>% unite("aa",c(EXSTDT,EXSTTM),sep = "T") %>% select(SUBJID,aa) 
+
+temp <- temp  %>% group_by(SUBJID) %>%
+  mutate(RFSTDTC= min(aa)) %>% ungroup()
+temp <- temp %>% select(SUBJID,RFSTDTC) %>% distinct()
+temp$SUBJID<- as.character(temp$SUBJID)
+dm1 <- dm1 %>% left_join(temp)
+dm1$RFSTDTC[is.na(dm1$RFSTDTC)]<- ""
+dm1 <- dm1 %>% mutate(RFXSTDTC = RFSTDTC)
+```
+#MAX(CASE WHEN EXSTDT IS NOT NULL THEN NVL2(EXSTDT,TO_CHAR(EXSTDT,'YYYY-MM-DD'),'-----')||RPAD('T',1+MOD(8-LENGTH(TRIM(EXSTTM)),3),'0')||TRIM(EXSTTM)
+END)AS MAXSTDTC,
+```{r}
+temp <-  exposure%>% separate(EXSTTM,c("a","b","c")) %>% unite("EXSTTM",a:b)
+temp$EXSTDT <- as.character(temp$EXSTDT)
+temp$EXSTTM<- gsub("_",":",temp$EXSTTM)
+temp$EXSTTM <- as.character(temp$EXSTTM)
+
+temp <- temp %>% unite("aa",c(EXSTDT,EXSTTM),sep = "T") %>% select(SUBJID,aa) 
+
+temp <- temp  %>% group_by(SUBJID) %>%
+  mutate(MAXSTDTC= max(aa)) %>% ungroup()
+temp <- temp %>% select(SUBJID,MAXSTDTC) %>% distinct()
+temp$SUBJID<- as.character(temp$SUBJID)
+dm1 <- dm1 %>% left_join(temp)
+dm1$MAXSTDTC[is.na(dm1$MAXSTDTC)]<- ""
+
+```
+```{r}
+dm1 <- dm1 %>% mutate(DOMAIN = "DM")
+dm1 <- dm1 %>% mutate(RFICDTC = as.character(CNSDT))
+dm1 <- dm1 %>% select(-c(VISITNUM,VISIT,ETHNICCD,DOBD_,GENDERCD,ETSBJSTS,PTYN,PTSTUDY,PTCENTRE,PTSUBJID,SEQ,RACECCD,CNSDT))
+dm1 <- dm1 %>% select(STUDYID,DOMAIN,USUBJID,SUBJID,RFSTDTC,RFXSTDTC,RFICDTC,DTHDTC,DTHFL,SITEID,INVID,INVNAM,BRTHDTC,SEX,RACE,ETHNIC,MAXSTDTC,COUNTRY)
+
+```
+
+
+#MAX(CASE WHEN EXENDT IS NOT NULL THEN TO_CHAR(EXENDT,'YYYY-MM-DD')END)AS RFXENDTC
+
+
+
