@@ -1,0 +1,111 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "9/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##library loading
+```{r}
+library(haven)
+library(dplyr)
+library(Hmisc)
+library(tidyverse)
+library(expss)
+```
+```{r}
+adisrndl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adisrndl.sas7bdat",NULL)
+adaeisr <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adaeisr.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+```
+```{r}
+
+adisrndl_1 <- adaeisr %>% select(STUDYID,SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,SCRNFL,SAFFL,ITTEFL,PPROTFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTSDT,TRTEDT,MNTEDT,APHASE,APHASEN,AESTDTC,ASTDT,ASTDTC,ASTDTF,AEENDTC,AENDT,AENDTC,AENDTF,AESEQ,AETERM,AEDECOD,AEBODSYS,AEBDSYCD,AEPTCD,AEREL,AETOXGR,AETOX,AETOXGRN,DRUG,NUMINJ,CNUMEVFL,CNUMEVOR,ISRCATCD,ANDLCAT,ANDLCTN)
+temp <- adsl %>% select(USUBJID,TRT01P,TRT01PN,TRT01A,TRT01AN)
+temp <- temp %>% mutate(TRTP = TRT01P)
+temp <- temp %>% mutate(TRTPN = TRT01PN)
+temp <- temp %>% mutate(TRTA = TRT01A)
+temp <- temp %>% mutate(TRTAN = TRT01AN)
+temp <- apply_labels(temp,TRTP = "Planned Treatment")
+temp <- apply_labels(temp,TRTPN = "Planned Treatment (N)")
+temp <- apply_labels(temp,TRTA = "Actual Treatment")
+temp <- apply_labels(temp,TRTAN = "Actual Treatment (N)")
+temp <- temp %>% select(USUBJID,TRTP,TRTPN,TRTA,TRTAN)
+
+adisrndl_1 <- left_join(adisrndl_1,temp,by = c("USUBJID"="USUBJID"))
+
+
+distinct(adisrndl_1)
+
+```
+
+
+#For all common drug related ISRs (where CNUMEVFL=1 and AEREL in ('Y',''), set MXNDLCT per USUBJID, DRUG and AEDECOD, to the value of ADAEISR.ANDLCAT at the earliest ASTDT for the maximum AETOXGRN per USUBJID DRUG and AEDECOD.
+```{r}
+filtered_adaeisr <- adisrndl_1 %>% 
+  filter(ISRCATCD == "ISRALL" & CNUMEVFL == 1 & (AEREL == "Y"|AEREL == "") & APHASEN == 2 & !(is.na(ASTDT)))
+ 
+adisrndl_1 <- filtered_adaeisr %>% rename(MXNDLCT= ANDLCAT,MXNDLCTN =ANDLCTN)
+adisrndl_1 <- adisrndl_1 %>% select(STUDYID,SITEID,USUBJID,LTSUBJID,AGE,AGEU,SEX,RACE,COUNTRY,SCRNFL,SAFFL,ITTEFL,PPROTFL,ENRLFL,LTFUFL,TRT01P,TRT01PN,TRT01A,TRT01AN,TRTP,TRTPN,TRTA,TRTAN,TRTSDT,TRTEDT,MNTEDT,APHASE,APHASEN,AESTDTC,ASTDT,ASTDTC,ASTDTF,AEENDTC,AENDT,AENDTC,AENDTF,AESEQ,AETERM,AEDECOD,AEBODSYS,AEBDSYCD,AEPTCD,AEREL,AETOXGR,AETOX,AETOXGRN,DRUG,NUMINJ,CNUMEVFL,CNUMEVOR,MXNDLCT,MXNDLCTN)
+```
+#labelling
+```{r}
+label(adisrndl_1$STUDYID)<- "Study Identifier"
+label(adisrndl_1$SITEID)<- "Study Site Identifier"
+label(adisrndl_1$USUBJID)<-'Unique Subject Identifier'
+label(adisrndl_1$LTSUBJID)<-'Latest Subject Identifier'
+label(adisrndl_1$AGE)<-'Age'
+label(adisrndl_1$AGEU)<-'Age Units'
+label(adisrndl_1$SEX)<-'Sex'
+label(adisrndl_1$RACE)<-'Race'
+label(adisrndl_1$COUNTRY)<-'Country'
+label(adisrndl_1$SCRNFL)<-'Screened Population Flag'
+label(adisrndl_1$SAFFL)<-'Safety Population Flag'
+label(adisrndl_1$ITTEFL)<-'Intent-to-Treat Exposed Population Flag'
+label(adisrndl_1$PPROTFL)<-'Per Protocol Population Flag'
+label(adisrndl_1$ENRLFL)<-'Enrolled Population Flag'
+label(adisrndl_1$LTFUFL)<-'Long Term Follow-up Population Flag'  
+label(adisrndl_1$TRT01P)<-'Planned Treatment for Period 01'     
+label(adisrndl_1$TRT01PN)<-'Planned Treatment for Period 01 (N)' 
+label(adisrndl_1$TRT01A)<-'Actual Treatment for Period 01'      
+label(adisrndl_1$TRT01AN)<-'Actual Treatment for Period 01 (N)'  
+label(adisrndl_1$TRTP)<-'Planned Treatment'     
+label(adisrndl_1$TRTPN)<-'Planned Treatment (N)' 
+label(adisrndl_1$TRTA)<-'Actual Treatment'
+label(adisrndl_1$TRTAN)<-'Actual Treatment (N)'
+label(adisrndl_1$TRTSDT)<-'Date of First Exposure to Treatment'
+label(adisrndl_1$TRTEDT)<-'Date of Last Exposure to Treatment'
+label(adisrndl_1$MNTEDT)<-'Maintenance End Date'
+label(adisrndl_1$APHASE)<-'Phase'     
+label(adisrndl_1$APHASEN)<-'Phase (N)' 
+label(adisrndl_1$AESTDTC)<-'Start Date/Time of Adverse Event'
+label(adisrndl_1$ASTDT)<-'Analysis Start Date'
+label(adisrndl_1$ASTDTC)<-'Analysis Start Date (C)'
+label(adisrndl_1$ASTDTF)<-'Analysis Start Date Imputation Flag'
+label(adisrndl_1$AEENDTC)<-'End Date/Time of Adverse Event'
+label(adisrndl_1$AENDT)<-'Analysis End Date'
+label(adisrndl_1$AENDTC)<-'Analysis End Date (C)'
+label(adisrndl_1$AENDTF)<-'Analysis End Date Imputation Flag'
+label(adisrndl_1$AESEQ)<-'Sequence Number'                                   
+label(adisrndl_1$AETERM)<-'Reported Term for the Adverse Event'                             
+label(adisrndl_1$AEDECOD)<-'Dictionary-Derived Term'                               
+label(adisrndl_1$AEBODSYS)<-'Body System or Organ Class'                
+label(adisrndl_1$AEBDSYCD)<-'Body System or Organ Class Code'      
+label(adisrndl_1$AEPTCD)<-'Preferred Term Code'         
+label(adisrndl_1$AEREL)<-'Causality'  
+label(adisrndl_1$AETOXGR)<-'Standard Toxicity Grade (C)'  
+label(adisrndl_1$AETOX)<-'Standard Toxicity Grade'  
+label(adisrndl_1$AETOXGRN)<-'Standard Toxicity Grade (N)'   
+label(adisrndl_1$DRUG)<-'Drug'    
+label(adisrndl_1$NUMINJ)<-'Number of Injections'       
+label(adisrndl_1$CNUMEVFL)<-'Common ISR Flag'  
+label(adisrndl_1$CNUMEVOR)<-'Common ISR Order'  
+label(adisrndl_1$MXNDLCT)<-'Maximum Needle Length Group'  
+label(adisrndl_1$MXNDLCTN)<-'Maximum Needle Length Group Code'
+```
+
+
