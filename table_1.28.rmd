@@ -1,0 +1,192 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/1/2020"
+output: 
+  html_document:
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(data.table)
+# library(table1)
+# library(arsenal)
+```
+#table 1.28 page 1 of 1
+```{r}
+adex <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adex.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+data <- adsl %>% filter(ITTEFL == "Y") %>% select(USUBJID,TRT01P)
+adex1 <- adex %>% filter(PARAM == "No. of IP injections" & ITTEFL == "Y" & (PARAMCD == "EXPOR"|PARAMCD == "EXPLA"|PARAMCD == "EXPTOT")) %>% select(USUBJID,TRT01P,AVALCAT1,AVALCT1N,AVAL) %>% mutate("DTG + RPV" = 0)
+col1 <- adex1 %>%  group_by(TRT01P)%>% dplyr::count(AVALCAT1)  %>% 
+  pivot_wider(names_from = TRT01P, values_from = n)
+col1 <- col1 %>%
+  mutate(q2m = paste0(round(Q2M / sum(Q2M) * 100), "%"))
+col1$q2m <- assertive.base::parenthesise(col1$q2m)
+
+col1<- col1 %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "  ")
+col1 <- col1 %>% 
+  add_row(AVALCAT1 = "Exposure  (No. of IP injection Visits)",Q2M="",.before = 1) %>% 
+  add_row(AVALCAT1 = "n",Q2M= "90"  ,.before = 2) %>%
+  add_row(AVALCAT1 = "2 to <4",Q2M= "0",.before = 4) %>% 
+  add_row(AVALCAT1 = ">=12",Q2M="0") %>% 
+  add_row(AVALCAT1 = "Exposure  (No. of IP injection Visits)",Q2M ="") %>% 
+  mutate("DTG + RPV"="")
+col2 <-adex1 %>% summarise(n=format(n()),
+                           Mean =format(round(mean(AVAL),1)),
+                           SD = format(round(sd(AVAL),2)),
+                           Median =format(median(AVAL),nsmall = 1),
+                           Q1 =format(quantile(AVAL,0.25),nsmall = 1),
+                           Q3 =format(quantile(AVAL,0.75),nsmall = 1),
+                           Min.=format(min(AVAL)),
+                           Max.=format(max(AVAL))) %>% 
+  pivot_longer(cols= 1:8, names_to = "AVALCAT1",values_to ="Q2M") %>% 
+  mutate("DTG + RPV"= "")
+
+col1 <-rbind(col1,col2)
+col1<- setnames(col1,"AVALCAT1","" )
+col1 <-setnames(col1, "Q2M", "Q2M (N= 90) ")
+col1 <-setnames(col1, "DTG + RPV", "DTG + RPV  (N= 7) ")
+
+kableExtra::kbl(col1, caption = "", align="l", escape = F, bootstrap_options = "basic") %>%
+  kableExtra::kable_minimal(full_width = T, html_font = "Courier New")  %>% 
+  kableExtra::column_spec(3, extra_css = "") 
+rm(list=ls())
+# 
+
+```
+#table 1.28 page 2 of 2
+```{r}
+adex <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adex.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+data <- adsl %>% filter(ITTEFL == "Y") %>% select(USUBJID,TRT01P)
+
+adex2 <- adex %>% filter(PARAM == "Overall Exposure" & ITTEFL == "Y" & (PARAMCD == "EXPOR"|PARAMCD == "EXPLA"|PARAMCD == "EXPTOT")) %>% select(USUBJID,TRT01P,AVALCAT1,AVALCT1N,AVAL) 
+
+col1 <-  adex2 %>%  group_by(TRT01P)%>% dplyr::count(AVALCAT1)  %>% 
+  pivot_wider(names_from = TRT01P, values_from = n)
+col1$`DTG + RPV`[is.na(col1$`DTG + RPV`)] <- 0
+
+col1 <- col1 %>%
+  mutate(dtg = scales::percent(round(`DTG + RPV`/7*100)/100)) %>% 
+  mutate(q2m = paste0(round(Q2M / sum(Q2M) * 100), "%"))
+
+col1$q2m <- assertive.base::parenthesise(col1$q2m)
+col1$dtg <-assertive.base::parenthesize(col1$dtg)
+col1$`DTG + RPV`[is.na(col1$`DTG + RPV`)] <- 0
+
+col1<- col1 %>% 
+  unite("Q2M", c(Q2M,q2m),sep = "   ") %>% 
+  unite("DTG + RPV",c(`DTG + RPV`,dtg), sep = "   ")
+
+col1 <- col1 %>% 
+  add_row(AVALCAT1 = "2 to <4 months",`DTG + RPV`= "0",Q2M= "0"  ,.before = 3) %>%
+  add_row(AVALCAT1 = "4 to <6 months",`DTG + RPV`= "0",Q2M= "0"  ,.after = 3) %>%
+  add_row(AVALCAT1 = "8 to <10 months",`DTG + RPV`= "0",Q2M= "0"  ,.before = 6) %>%
+  add_row(AVALCAT1 = "18 to <20 months",`DTG + RPV`= "0",Q2M= "0" ) %>%
+  add_row(AVALCAT1 = "20 to <22 months",`DTG + RPV`= "0",Q2M= "0" ) %>%
+  add_row(AVALCAT1 = "22 to <24 months",`DTG + RPV`= "0",Q2M= "0" ) %>%
+  add_row(AVALCAT1 = ">=24months",`DTG + RPV`= "0",Q2M= "0" ) %>%
+  add_row(AVALCAT1 = "",`DTG + RPV`= "",Q2M = "") %>% 
+  add_row(AVALCAT1 = "Overall Exposure   (Days)",`DTG + RPV`="",Q2M ="")
+  
+adex2_filter<- adex2 %>% filter(TRT01P=="DTG + RPV")  
+col2 <-adex2_filter %>% summarise(n=format(n()),
+                           Mean =format(round(mean(AVAL),1)),
+                           SD = format(round(sd(AVAL),2)),
+                           Median =format(median(AVAL),nsmall = 1),
+                           Q1 =format(quantile(AVAL,0.25),nsmall = 1),
+                           Q3 =format(quantile(AVAL,0.75),nsmall = 1),
+                           Min.=format(min(AVAL)),
+                           Max.=format(max(AVAL))) %>% 
+  pivot_longer(cols= 1:8, names_to = "AVALCAT1",values_to ="DTG + RPV")
+adex2_filter1 <- adex2 %>% filter(TRT01P == "Q2M")
+col3 <-adex2_filter1 %>% summarise(n=format(n()),
+                           Mean =format(round(mean(AVAL),1)),
+                           SD = format(round(sd(AVAL),2)),
+                           Median =format(median(AVAL),nsmall = 1),
+                           Q1 =format(quantile(AVAL,0.25),nsmall = 1),
+                           Q3 =format(quantile(AVAL,0.75),nsmall = 1),
+                           Min.=format(min(AVAL)),
+                           Max.=format(max(AVAL))) %>% 
+  pivot_longer(cols= 1:8, names_to = "AVALCAT1",values_to ="Q2M")
+col11 <-  full_join(col2,col3)
+col1 <- full_join(col1,col11)
+
+col1 <- col1 %>% 
+  mutate(rank = case_when(
+    AVALCAT1 == "<2 months" ~ 1,
+    AVALCAT1 == "2 to <4 months" ~ 2,
+    AVALCAT1 == "4 to <6 months" ~ 3,
+    AVALCAT1 == "6 to <8 months" ~ 4,
+    AVALCAT1 == "8 to <10 months"~ 5,
+    AVALCAT1 == "10 to <12 months"~6,
+    AVALCAT1 == "12 to <14 months"~7,
+    AVALCAT1 == "14 to <16 months"~8,
+    AVALCAT1 == "16 to <18 months"~9,
+    AVALCAT1 == "18 to <20 months"~10,
+    AVALCAT1 == "20 to <22 months"~11,
+    AVALCAT1 == "22 to <24 months"~12,
+    AVALCAT1 == ">=24months"~13)) %>% 
+  arrange(rank)
+col1 <- col1 %>% 
+  add_row(AVALCAT1 = "Overall Exposure",`DTG + RPV`= "",Q2M="",.before = 1) %>% 
+  add_row(AVALCAT1 = "n",`DTG + RPV`= "7",Q2M= "90"  ,.before = 2) %>% select(-rank)
+col1<- setnames(col1,"AVALCAT1","" )
+col1 <-setnames(col1, "Q2M", "Q2M (N= 90) ")
+col1 <-setnames(col1, "DTG + RPV", "DTG + RPV  (N= 7) ")
+
+kableExtra::kbl(col1, caption = "", align="l", escape = F, bootstrap_options = "basic") %>%
+  kableExtra::kable_minimal(full_width = T, html_font = "Courier New")  %>% 
+  kableExtra::column_spec(3, extra_css = "") 
+
+rm(list=ls())
+# table1(~ AVALCAT1 | TRT01P, data=adex1 ,overall = FALSE)
+# # my<- tableby.control(test=FALSE, total=FALSE,numeric.stats=c("N", "median","q1q3"),
+# #                                cat.stats=c("countpct"),
+# #                                stats.labels=list(n="Count", median="Median", q1q3='Q1,Q3'))
+# # adex11 <- tableby(TRT01P ~ AVALCAT1 + AVALCT1N,data = adex1,control = my)
+# # summary(adex11,title = "Summary of Extent of Exposure to Investigational Product")
+# 
+# adex1$TRT01P<- factor(adex1$TRT01P) 
+#   
+# tab1 <- tableby(TRT01P~AVALCAT1+ AVAL,data = adex1,
+#                 control=tableby.control(numeric.stats=c("mean","sd","median","min","max"), total=FALSE))
+# label(adex1$AVALCAT1)<- "Exposure (No. of IP injection Visits)"
+# label(adex1$AVAL)<- "Exposure (No. of IP injection Visits)"
+# tab1 <- tab1 %>% add_row(""= "90")
+# # line2 <- c("2 to <4",0)
+# # tab1 <- tab1 %>% rbind(line2)
+# # tab1<- tab1 %>% mutate("DTG + RPV"= "")
+# summary(tab1,title = "Summary of Extent of Exposure to Investigational Product")
+# 
+# # table.Rtable1 {
+# #     font-family: "Courier New", Monaco, monospace;
+# #     border-collapse: collapse;
+# #     font-size: 9pt;
+# # }
+# 
+# library(table1)
+# table1::label(adex1$AVALCAT1)<- "Exposure (No. of IP injections)"
+# table1::label(adex1$AVAL)<- "Exposure (No. of IP injections)"
+# 
+# 
+# tab2<-table1::table1(~AVALCAT1+ AVAL|TRT01P, data = adex1, Overall= FALSE)
+# tab2
+# tab2 <- tab2 %>% add_row(Group="n",.before = 1)
+# 
+# 
+# col3 <- col3 %>% rbind(line2)
+```
+
