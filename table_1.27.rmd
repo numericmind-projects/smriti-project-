@@ -110,25 +110,19 @@ library(data.table)
 #            paste0("DTG + RPV <br/> (N = ", sum(is.numeric(table_2$`DTG + RPV`)),")"),
 #            paste0("Total <br/> (N = ",sum(is.numeric(table_2$Total)),")"))
 
-
-
-
-
-
-
 table_2 <-setnames(table_2, "Q2M", "Q2M <br/>  (N= 90) ")
 table_2 <-setnames(table_2, "DTG + RPV", "DTG + RPV  (N= 7) ")
 table_2 <-setnames(table_2, "Total", "Total (N= 97) ")
 
-  
-```
-```{r, results= "asis"}
-
-kableExtra::kbl(table_2, caption = "", align = "l", escape = F, bootstrap_options = "basic") %>%
-  kableExtra::kable_minimal(full_width = F, html_font = "Courier New") %>% 
-  kableExtra::column_spec(3, extra_css = "") 
-table_2 %>% knitr::kable(caption = "<center> Table 1.27 <br/> Summary of Substance Use at Entry </center> <br/>")
-table_2
+title <- c("<center> Table 1.27 <br/> Summary of Substance Use at Entry </center> <br/>"=4 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed <br/>"=4) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(table_2,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())
 
 ```
 
