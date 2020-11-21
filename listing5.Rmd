@@ -1,0 +1,33 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#listing 5 of Subjects with Inclusion/Exclusion Criteria Deviations
+```{r}
+ adie <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adie.sas7bdat",NULL)
+adie1 <- adie %>% filter(TRT01P == "DTG + RPV") %>%
+  select(TRT01P,SITEID,USUBJID,AVALC) %>% 
+  rename("Treatment"=TRT01P) %>% 
+  mutate(Type = "Exclusion") %>% 
+  rename("Criterion"=AVALC) %>% 
+  rename("Site Id." = SITEID) %>% 
+  rename("Unique Subject Id."= USUBJID)
+adie1<- adie1 %>%
+  select(Treatment,`Site Id.`,`Unique Subject Id.`,Type,Criterion)
+title <- c("Listing 5 <br/>Listing of Subjects with Inclusion/Exclusion Criteria Deviations <br/> <br/>"=5 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed <br/>"=5) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(adie1,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+rm(list = ls())
+  
+```
