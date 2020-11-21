@@ -50,5 +50,15 @@ test <- test %>%rename("Not Assigned
                                  (N=7)"="DTG + RPV") %>%
                            rename("Total
                                  (N=98)"=Total)
-View(test)
+                                 
+title <- c("Table 1.04 <br/>Summary of Number of Subjects Enrolled by Country and Site ID<br/> <br/>"=7 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Enrolled<br/>"=7) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(test,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())                                  
+
 ```
