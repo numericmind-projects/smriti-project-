@@ -1,0 +1,155 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#problem
+how to split page in listing 3
+how to bring canada
+and header fooder part
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+#listing 1 of Screen Failure
+```{r}
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adds.sas7bdat",NULL)
+test <- adds %>% 
+  select(USUBJID,SITEID,ADT,PARAMCD,AVALC) %>% 
+  filter(PARAMCD == "SFRES")
+test1 <- test %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID,sep = "/") %>%
+  mutate("Date of Screen Failure" = toupper(format(ADT,"%d%b%Y"))) %>% 
+  mutate(Reason = AVALC) %>% 
+  mutate("Subreason(s)" = "") %>% select(-c(ADT,PARAMCD,AVALC))
+title <- c("Listing 1 <br/> Listing of Reasons for Screen Failure <br/> <br/>"=4 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Screened <br/>"=4) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(test1,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+# %>% 
+#   kableExtra::add_footnote(general_title = "",general = footer,footnote_as_chunk = T,escape = F)
+# test1 %>% knitr::kable(caption = "<center>Listing 1 <br/> Listing of Reasons for Screen Failure </center> <br/>") 
+# kableExtra::kbl(test1, caption = "", align="l", escape = F, bootstrap_options = "basic") %>%
+#   kableExtra::kable_minimal(full_width = T, html_font = "Courier New")  %>% 
+#   kableExtra::column_spec(3, extra_css = "")
+rm(list = ls())
+
+```
+#listing 2 of Study Withdrawal
+
+```{r}
+adds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adds.sas7bdat",NULL)
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+data <- adsl %>% filter(ITTEFL == "Y")
+data1 <- data %>% unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  filter(`Site Id. / Unique Subject Id.` == "236231/116482.000151") %>% select(`Site Id. / Unique Subject Id.`,TRT01P) %>% 
+  rename(Treatment = TRT01P)
+data2<- data %>% unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  filter(`Site Id. / Unique Subject Id.` == "236248/116482.000603") %>% 
+  select(`Site Id. / Unique Subject Id.`,TRT01P) %>% 
+  rename(Treatment = TRT01P)
+data<- rbind(data1,data2)
+filter<-data %>% 
+  arrange(desc(Treatment),`Site Id. / Unique Subject Id.`) %>% 
+  mutate("`Site Id. / Unique Subject Id.`"= case_when(
+     duplicated(Treatment)==T & duplicated(`Site Id. / Unique Subject Id.`)~"",
+    TRUE ~ `Site Id. / Unique Subject Id.`)) %>% 
+  mutate(TRT01P = case_when(
+    duplicated(Treatment) == T ~ "",
+    TRUE ~ Treatment))
+data3 <- adds %>%
+  filter(PARAMCD == "SCWRES") %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID,sep = "/") %>%
+  mutate("Date of Withdrawal / Study Day"= toupper(format(ADT,"%d%b%Y"))) %>% 
+  mutate("Subreason(s)"= "")
+data3 <- data3 %>% 
+  select(`Site Id. / Unique Subject Id.`,`Date of Withdrawal / Study Day`,AVALC,`Subreason(s)`,FUCERTLM,FUPCONT3) %>%
+  rename("Primary Reason"= AVALC) %>%
+  rename("Follow-up Certified Letter Mailed"=FUCERTLM) %>% 
+  rename("Follow-up Phone Contact Attempted x3"= FUPCONT3)
+data3 <- full_join(filter,data3)
+data3 <- data3 %>% select(TRT01P,`Site Id. / Unique Subject Id.`,`Date of Withdrawal / Study Day`,`Primary Reason`,`Subreason(s)`,`Follow-up Certified Letter Mailed`,`Follow-up Phone Contact Attempted x3`)
+data3 <- data3 %>% rename("Treatment"= TRT01P)
+
+title <- c("Listing 2 <br/> Listing of Reasons for Study Withdrawal <br/> <br/>"=7)
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=7) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(data3,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+# data3 %>% knitr::kable(caption = "<center>Listing 2 <br/> Listing of Reasons for Study Withdrawal </center> <br/>") 
+#  kableExtra::kbl(data3, caption = "", align="l", escape = F, bootstrap_options = "basic") %>%
+#   kableExtra::kable_minimal(full_width = T, html_font = "Courier New")  %>% 
+#   kableExtra::column_spec(3, extra_css = "")
+rm(list = ls())
+```
+```{r}
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+data <- adsl %>% filter(ENRLFL == "Y") %>% 
+  select(SITEID,USUBJID,COUNTRY,TRTSDT,TRT01A)
+data <- data %>% 
+  filter(COUNTRY == "CAN") %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID,sep = "/") %>% 
+  rename("Actual Treatment" = TRT01A) %>% 
+  mutate("Treatment Start Date"= toupper(format(TRTSDT,"%d%b%Y"))) 
+
+data <- data %>% select(`Site Id. / Unique Subject Id.`,`Actual Treatment`,`Treatment Start Date`)
+
+datausa <- adsl %>% filter(ENRLFL == "Y") %>% 
+  select(SITEID,USUBJID,COUNTRY,TRTSDT,TRT01A)
+datausa <- datausa %>% 
+  filter(COUNTRY == "USA") %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID,sep = "/") %>% 
+  rename("Actual Treatment" = TRT01A) %>% 
+  mutate("Treatment Start Date"= toupper(format(TRTSDT,"%d%b%Y"))) 
+datausa$`Treatment Start Date`[is.na(datausa$`Treatment Start Date`)]<- ""
+
+datausa <- datausa %>% select(`Site Id. / Unique Subject Id.`,`Actual Treatment`,`Treatment Start Date`)
+alldata <- full_join(data,datausa)
+
+title <- c("Listing 3 <br/> Listing of Reasons for Study Withdrawal <br/> <br/>"=3)
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: All Enrolled Subjects<br/>"=3)
+# sidemore <- ("Country: Canada")
+ 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(alldata,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+# %>% 
+#   kableExtra::add_header_above(header = sidemore,escape = F,line = F,align = "l")
+
+
+
+# data %>% knitr::kable(caption = "<center>Listing 3 <br/> Listing of Treatment Statement </center> <br/>") 
+# kableExtra::kbl(data, caption = "", align="l", escape = F, bootstrap_options = "basic") %>%
+#   kableExtra::kable_minimal(full_width = T, html_font = "Courier New")  %>% 
+#   kableExtra::column_spec(3, extra_css = "")
+rm(list = ls())
+```
+
+```{r}
+# data <- adsl %>% distinct(USUBJID,.keep_all = T) %>% 
+#   select(SITEID,USUBJID,BRTHDTC,AGE,SEX,ETHNIC,HEIGHTBL,WEIGHTBL,TRT01P)
+# data <- data %>% select(TRT01P,`siteid/usubjid`,BRTHDTC,AGE,SEX,ETHNIC,HEIGHTBL,WEIGHTBL)
+```
+
+
+
