@@ -48,6 +48,9 @@ test <- test %>%
   unite("Q2M", c(Q2M,q2m),sep = "  ") %>% 
   unite("Total", c(Total,total),sep = "  ")
 test <- apply_labels(test,Q2M = "(N=90)")
+test <- apply_labels(test,"DTG + RPV" = "(N=7)")
+test <- apply_labels(test,Total = "(N=97)")
+test <- test %>% add_row(ADECOD="Any Medication",Q2M="11 (12%)",Total="11 (11%)",`DTG + RPV`= "0",.before = 1)
 
 View(test) 
 
