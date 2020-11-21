@@ -1,0 +1,45 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+#Listing 6 of Protocol Deviations Leading to Exclusion from the Per-Protocol Population 
+
+```{r}
+addv <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/addv.sas7bdat", NULL)
+addv1<- addv %>% filter(ITTEFL=="Y" & EXCLPPFL== "Y" & DTYPE!= "PHANTOM") %>% 
+  select(SITEID,USUBJID,TRT01P,ASTDT,ASTDY,ATERM,ADECOD,ACAT)
+list <- addv1 %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  mutate(DATE = toupper(format(ASTDT,"%d%b%Y"))) %>% 
+  unite("Category/Coded Term",ACAT:ADECOD,sep = "/")
+list$ASTDY <- as.character(list$ASTDY)
+list <- mutate(list,"Date of Deviation / Study Day" = paste(DATE,"/",ASTDY)) %>% 
+  rename("Term" = ATERM)
+list <- list %>% select(`Site Id. / Unique Subject Id.`,TRT01P, `Date of Deviation / Study Day` ,`Category/Coded Term`,Term)
+list<-list%>% 
+  arrange(desc(TRT01P)) %>% 
+  rename("Treatment"=TRT01P)
+
+title <- c("Listing 6 <br/>Listing of Protocol Deviations Leading to Exclusion from the Per-Protocol Population <br/> <br/>"=5 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed <br/>"=5) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+rm(list = ls())
+```
