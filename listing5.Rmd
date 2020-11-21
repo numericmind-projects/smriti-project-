@@ -8,6 +8,13 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
 #listing 5 of Subjects with Inclusion/Exclusion Criteria Deviations
 ```{r}
  adie <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adie.sas7bdat",NULL)
