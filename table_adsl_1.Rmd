@@ -46,7 +46,7 @@ table1::label(adsl_1$HEIGHTBL) <- "Height (cm) at baseline"
 table1::label(adsl_1$WEIGHTBL) <- "Weight (kg) at baseline"
 table1::label(adsl_1$BMIBL) <- "BMI (kg/m^2) at Baseline"
 table1::table1(~ AGE + AGEGR1 +AGEGR2 + AGEGR3 + AGEGR4 + SEX + SRGENDER + RACE + RACEGR1N + ETHNIC + HEIGHTBL + WEIGHTBL + BMIBL | TRT01P1, caption =
-                 "Summary of Demographic statistics", data = adsl_1, overall =
+                 "Table 1.12 <br/>Summary of Demographic statistics", data = adsl_1, overall =
                  "Total",render.continuous=c(.="n",.="Mean",.="SD",.="Median",.
                                              ="Min.",.="Max."))
 ```
