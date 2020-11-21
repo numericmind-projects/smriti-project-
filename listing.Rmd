@@ -99,6 +99,7 @@ kableExtra::kable(data3,align = "l",escape = F, bootstrap_options = "basic") %>%
 #   kableExtra::column_spec(3, extra_css = "")
 rm(list = ls())
 ```
+#listing 3 of Treatment Assignment
 ```{r}
 adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
 data <- adsl %>% filter(ENRLFL == "Y") %>% 
