@@ -29,11 +29,24 @@ adc121 <- adc12 %>%
 test <- adc121 %>% 
   group_by(ADECOD,TRT01P) %>%
   select(USUBJID,LPDBLFL,LPDMPFL,ADECOD,TRT01P,ATC2CD) %>% 
-   summarise(n = n())
-
+   summarise(n = n()) 
 test <- test %>% pivot_wider(names_from = TRT01P, values_from = n)
-test <- test %>% mutate(Total = Q2M)
-test <- test %>% mutate("DTG + RPV" = 0)
+
+  
+test1 <-adc121%>% 
+  dplyr::distinct(USUBJID, .keep_all = T) %>%
+  dplyr::count(TRT01P, name = "anymedic", sort = T) %>%
+  tidyr::pivot_wider(
+    names_from = TRT01P,
+    values_from = anymedic
+  ) %>%
+  dplyr::mutate(ADECOD = "Any medication") %>%
+  dplyr::select(ADECOD, Q2M)
+test<- dplyr::bind_rows(test, test1) %>%
+  dplyr::mutate(
+    "DTG + RPV" = 0,
+    "Total" = Q2M + `DTG + RPV`
+  ) %>% dplyr::arrange(desc(Q2M))
 
 test <- test %>%
   mutate(q2m = scales::percent(round(Q2M/90))) %>%
@@ -50,8 +63,14 @@ test <- test %>%
 test <- apply_labels(test,Q2M = "(N=90)")
 test <- apply_labels(test,"DTG + RPV" = "(N=7)")
 test <- apply_labels(test,Total = "(N=97)")
-test <- test %>% add_row(ADECOD="Any Medication",Q2M="11 (12%)",Total="11 (11%)",`DTG + RPV`= "0",.before = 1)
 
-View(test) 
-
+title <- c("Table 1.25 <br/>Summary of Lipid Modifying Agent Use at Baseline<br/> <br/>"=4 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=4) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(test,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())
 ```
