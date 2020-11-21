@@ -23,28 +23,29 @@ library(table1)
 ##table1.12
 ```{r}
 # adsl_1 <- load("adsl_1.rds")
-adsl_1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adsl_1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL) %>% 
+  filter(ITTEFL == "Y")
 adsl_1$HEIGHTBL <- as.numeric(adsl_1$HEIGHTBL)
 adsl_1$WEIGHTBL <- as.numeric(adsl_1$WEIGHTBL)
 adsl_1 <- adsl_1 %>% mutate(TRT01P1= case_when(
-  TRT01P == "Not Assigned" ~ " " , 
   TRT01P=="Q2M" ~ "Q2M",
-  TRT01P == "DTG+RPV" ~ "DTG+RPV"
+  TRT01P == "DTG + RPV" ~ "DTG + RPV"
 ))
+
 table1::label(adsl_1$AGE) <- "Age"
 table1::label(adsl_1$AGEGR1) <- "Age group"
 table1::label(adsl_1$AGEGR2) <- ""
 table1::label(adsl_1$AGEGR3) <- ""
 table1::label(adsl_1$AGEGR4) <- ""
 table1::label(adsl_1$SEX) <- "Sex at birth"
+table1::label(adsl_1$SRGENDER) <- "Self-reported gender" 
 table1::label(adsl_1$RACE) <- "Race"
 table1::label(adsl_1$RACEGR1N) <-"RACEGR1"
 table1::label(adsl_1$ETHNIC) <- "Ethnicity"
 table1::label(adsl_1$HEIGHTBL) <- "Height (cm) at baseline"
 table1::label(adsl_1$WEIGHTBL) <- "Weight (kg) at baseline"
 table1::label(adsl_1$BMIBL) <- "BMI (kg/m^2) at Baseline"
-table1::table1(~ AGE + AGEGR1 +AGEGR2 + AGEGR3 + AGEGR4 + SEX + RACE + RACEGR1N
-               + ETHNIC + HEIGHTBL + WEIGHTBL + BMIBL | TRT01P1, caption =
+table1::table1(~ AGE + AGEGR1 +AGEGR2 + AGEGR3 + AGEGR4 + SEX + SRGENDER + RACE + RACEGR1N + ETHNIC + HEIGHTBL + WEIGHTBL + BMIBL | TRT01P1, caption =
                  "Summary of Demographic statistics", data = adsl_1, overall =
                  "Total",render.continuous=c(.="n",.="Mean",.="SD",.="Median",.
                                              ="Min.",.="Max."))
