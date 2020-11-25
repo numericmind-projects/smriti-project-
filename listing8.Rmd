@@ -1,0 +1,48 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adrace<-read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adrace.sas7bdat",NULL)
+list8 <- adsl %>% filter(ITTEFL=="Y") %>% select(TRT01P,SITEID,USUBJID,RACE)
+adrace<-adrace %>% filter(ITTEFL=="Y") %>% select(USUBJID,RACEOR) %>% distinct()
+list8<- list8 %>% left_join(adrace)
+list8 <- list8 %>% 
+  arrange(desc(TRT01P,SITEID)) %>% 
+  mutate(SITEID = case_when(
+    duplicated(SITEID)==T  & duplicated(TRT01P)==T ~"",
+    TRUE ~ SITEID)) %>% 
+  mutate(TRT01P= case_when(
+    duplicated(TRT01P)==T ~ "",
+    TRUE ~ TRT01P))
+list8 <- list8 %>% 
+  rename("Treatment"=TRT01P) %>% 
+  rename("Site Id."=SITEID) %>% 
+  rename("Unique Subject Id."=USUBJID) %>% 
+  rename("Race Detail"=RACEOR)
+title <- c("Listing 8 <br/>Listing of Race<br/> <br/>"=5 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed <br/>"=5) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list8,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())
+```
