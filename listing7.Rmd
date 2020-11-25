@@ -1,0 +1,49 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adsl1<- adsl %>% filter(ITTEFL== "Y") %>% select(INVID,SITEID,USUBJID,LTSUBJID,ITTEFL,TRT01P,AGE,SEX,ETHNIC,BRTHDTC,HEIGHTBL,WEIGHTBL) %>% arrange(desc(TRT01P)) %>% arrange(desc(HEIGHTBL))
+adsl1 <- adsl1 %>% 
+  arrange(desc(TRT01P)) %>% 
+  mutate(TRT01P= case_when(
+    duplicated(TRT01P)==T ~ "",
+    TRUE ~ TRT01P))
+adsl1 <- adsl1%>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  rename("Date of Birth"=BRTHDTC) %>% 
+  rename("Ethnicity"=ETHNIC) %>% 
+  rename("Height (cm)"=HEIGHTBL) %>% 
+  rename("Weight (kg)"=WEIGHTBL) %>% 
+  rename("Age (Years) [1]"=AGE) %>% 
+  rename("Treatment"=TRT01P)
+library(htmltools)
+adsl1<- adsl1 %>% select(Treatment,`Site Id. / Unique Subject Id.`,`Date of Birth`,`Age (Years) [1]`,SEX,Ethnicity,`Height (cm)`,`Weight (kg)`)
+title <- c("Listing 7 <br/>Listing of Demographic Characteristics <br/> <br/>"=8 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed <br/>"=8) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(adsl1,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l") 
+# %>% 
+#    kableExtra::add_footnote(general_title = "",general = footer,footnote_as_chunk = T,escape = F)
+rm(list = ls())
+
+```
