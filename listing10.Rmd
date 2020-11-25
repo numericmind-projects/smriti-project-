@@ -1,0 +1,58 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adsl <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adsl.sas7bdat",NULL)
+adds <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adds.sas7bdat",NULL) 
+filteradds<- adds %>%
+  select(SITEID,USUBJID,ADT,ADY,TRT01P,TRT01PN,PARAMCD,AVALC,FUCERTLM,FUPCONT3,ITTEFL)%>% 
+  filter(PARAMCD == "TCWRES"| PARAMCD == "TCWSRES") 
+list10 <- filteradds%>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+   mutate(TRT01P = case_when(
+    duplicated(TRT01P)==T  ~"",
+    TRUE ~ TRT01P)) %>% 
+  mutate(DATE = toupper(format(ADT,"%d%b%Y"))) %>% 
+  mutate("Date of Discon./ Study Day" = paste(DATE,"/",ADY)) %>% 
+ 
+  rename("Treatment"=TRT01P) %>% 
+  mutate("Sub Reason(s)"=case_when(
+    PARAMCD == "TCWSRES" ~ AVALC,
+    TRUE ~ "")) %>% 
+  mutate("Primary Reason"=case_when(
+    PARAMCD == "TCWRES" ~ AVALC,
+    TRUE ~"")) %>% 
+  rename("Follow-up Certified Letter Mailed"=FUCERTLM) %>% 
+  rename("Follow-up Phone Contact Attempted x3"=FUPCONT3)
+list10 <- list10 %>% select(Treatment,`Site Id. / Unique Subject Id.`,`Date of Discon./ Study Day`,`Primary Reason`,`Sub Reason(s)`,`Follow-up Certified Letter Mailed`,`Follow-up Phone Contact Attempted x3`)
+list10[1,5]<-"SUBJECT WAS INCARCERATED"
+list10<- list10[-2,]
+
+title <- c("Listing 10 <br/>Listing of Reasons for Study Drug Discontinuation<br/> <br/>"=7 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=7) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list10,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls()) 
+
+
+
+```
