@@ -1,0 +1,51 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adeff <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adeff.sas7bdat",NULL)
+filtered_data<- adeff %>% filter(ITTEFL=="Y"& AVISIT=="Month 12" & PARAMCD=="MSDF50"& ANL01FL== "Y") %>% select(SITEID,USUBJID,TRT01PN,TRT01P,AVALC,AVALCAT1,AVALCT1N)
+
+list11<- filtered_data %>% 
+  rename("Unique Subject Id."=USUBJID) %>% 
+  arrange(desc(TRT01P)) %>% 
+   mutate(TRT01P = case_when(
+    duplicated(TRT01P)==T  ~"",
+    TRUE ~ TRT01P)) %>% 
+     mutate(SITEID = case_when(
+    duplicated(SITEID)==T  ~"",
+    TRUE ~ SITEID)) %>% 
+  rename("Site Id."=SITEID) %>% 
+  rename("Study Outcome"=AVALCAT1) %>% 
+  rename("Subreason"=AVALC) %>% 
+  rename("Treatment"=TRT01P)
+list11<- list11 %>% select(Treatment,`Site Id.`,`Unique Subject Id.`,`Study Outcome`,Subreason)
+
+title <- c("Listing 11 <br/>Listing of Study Outcome (50 c/mL Threshold) at Month 12 - Snapshot Analysis<br/> <br/>"=5 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=5) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list11,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())  
+  
+
+   
+
+```
