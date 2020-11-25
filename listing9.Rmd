@@ -1,0 +1,53 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+
+```{r}
+adc1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adc1.sas7bdat",NULL)
+filter <- adc1 %>%
+  filter(SAFFL=="Y" & APCFN >=2 &ANL03FL == "Y" & DTYPE!= "PHANTOM") %>% 
+  select(SITEID,USUBJID,TRT01AN,TRT01A,ASTDT,ASTDY,ADECOD,C1ONGO,APCF,ATC4,C1TRT,AENDT,C1ENDTC,AENDY)
+filter$AENDT <- as.character(filter$AENDT)
+filter$AENDY <- as.character(filter$AENDY)
+filter$AENDT[is.na(filter$AENDT)]<- ""
+filter$AENDY[is.na(filter$AENDY)]<-""
+list9 <- filter%>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+   mutate("Site Id. / Unique Subject Id." = case_when(
+    duplicated(`Site Id. / Unique Subject Id.`)==T  ~"",
+    TRUE ~ `Site Id. / Unique Subject Id.`)) %>% 
+  rename("Ongoing Medication?"= C1ONGO)  %>% 
+  mutate(DATE = toupper(format(ASTDT,"%d%b%Y"))) %>% 
+  mutate("Date Started / Study Day" = paste(DATE,"/",ASTDY)) %>% 
+  mutate("Date Stopped / Study Day"= paste(AENDT,"/",AENDY)) %>% 
+  mutate("ATC Level 4/ Ingredient/ Verbatim Text" =paste(ATC4,"/",ADECOD,"/",C1TRT)) %>%
+  rename("Treatment"=TRT01A)
+
+list9 <- list9 %>%select(Treatment,`Site Id. / Unique Subject Id.`,`Date Started / Study Day`,`Date Stopped / Study Day`,`Ongoing Medication?`)
+
+title <- c("Listing 9 <br/>Listing of Concomitant ART Medications Received<br/> <br/>"=5 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Safety <br/>"=5) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list9,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls()) 
+```
+```
