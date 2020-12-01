@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "12/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adc1 <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adc1.sas7bdat",NULL)
+list <- adc1 %>% filter(ANL03FL=="Y" & APCFN == 4) %>% 
+  select(SITEID,USUBJID,TRT01AN,ASTDY,C1ONGO,C1TRT,C1SEQ,ATC4,ASTDT,AENDT,ADECOD,TRT01A,AENDY)
+list <- list %>% rename("Treatment"= TRT01A) %>% 
+  arrange(USUBJID) %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  mutate("ATC Level 4/ Ingredient/ Verbatim Text"= paste(ATC4,ADECOD,C1TRT,sep = "/ "))
+list$ASTDT <- toupper(format(list$ASTDT,"%d%b%Y"))
+list <- list %>% 
+  mutate("Date Started/ Study Day"= paste(ASTDT,ASTDY,sep = "/ "))
+list$AENDT<- as.character(list$AENDT)
+list$AENDT[is.na(list$AENDT)]<-""
+list$AENDY[is.na(list$AENDY)]<-""
+list <- list %>% 
+  mutate("Date Stopped/ Study Day" = paste(AENDT,AENDY,sep = "/ ")) %>% 
+  rename("Ongoing Mediaction?" = C1ONGO)
+list24 <- list %>% select(Treatment,`Site Id. / Unique Subject Id.`,`Date Started/ Study Day`,`Date Stopped/ Study Day`,`Ongoing Mediaction?`)
+title <- c("Listing 24<br/>Listing of ART Medications Received during Long-term Follow-up Phase<br/> <br/>"=5)
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=5)
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list24,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls()) 
+```
+   
