@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "12/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adae.sas7bdat",NULL)
+list <- adae %>% filter(SAFFL == "Y" & APHASEN == 3) %>%
+  select(SITEID,USUBJID,LTSUBJID,SAFFL,TRT01A,TRT01AN,APHASEN,APHASE,AGE,SEX,RACE,AEOUT,AESER,AEREL,AETOX,AEWD,AESTDTC,AEDECOD,AETERM,ASTDTC,AENDTC,ADURC,AFTRTSTC,ALTRTSTC,ATTRTSTC,AEACN,ALAT,DRUG)
+list <- list %>% rename("Treatment"= TRT01A) %>% 
+  arrange(USUBJID) %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/ ") %>% 
+  unite("Age (YEARS) / Sex/ Race",AGE:SEX:RACE, sep = "/ ") %>% 
+  unite("Preferred Term/ VERBATIM TEXT",AEDECOD:AETERM,sep = "/ ") %>% 
+  mutate("Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration"=paste(AEOUT,ASTDTC,APHASE,AENDTC,ADURC, sep = "/ ")) %>% 
+  unite("Time Since 1st Dose/ Time Since Last Dose/ Time Since Phase Start", AFTRTSTC:ALTRTSTC:ATTRTSTC, sep = "/ ") %>% 
+  unite("Side/Drug",ALAT:DRUG, sep = "/") %>% 
+  mutate(AEREL = case_when(
+     AEREL == "Y" ~ "Yes",
+     AEREL == "N" ~ "No")) %>% 
+  mutate("Action Taken/ Relation to Study Treatment"=paste(AEACN,AEREL,sep = "/ ")) %>%
+   mutate(AESER= case_when(
+    AESER == "N" ~ "No",
+    AESER == "Y" ~ "Yes")) %>% 
+  mutate("Intensity or Maximum Grade/ Serious/ Withdrawal"= paste(AETOX,AESER,AEWD,sep = "/ "))
+list26 <- list %>% select(Treatment,`Site Id. / Unique Subject Id.`,`Age (YEARS) / Sex/ Race`,`Preferred Term/ VERBATIM TEXT`,`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`,`Time Since 1st Dose/ Time Since Last Dose/ Time Since Phase Start`,`Intensity or Maximum Grade/ Serious/ Withdrawal`,`Action Taken/ Relation to Study Treatment`,`Side/Drug`)
+ title <- c("Listing 26<br/>Listing of All Adverse Events (Long-term Follow-up Phase)<br/> <br/>"=9)
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Safety<br/>"=9)
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list26,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls())   
+```
+ 
+
+
+
+
+
+
+
