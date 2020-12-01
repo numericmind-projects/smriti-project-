@@ -1,0 +1,69 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "11/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+```{r}
+adae <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adae.sas7bdat",NULL)
+list <- adae %>% 
+  filter(SAFFL== "Y" & APHASEN>1 & AESER== "Y") %>% 
+select(SITEID,USUBJID,LTSUBJID,SAFFL,TRT01A,TRT01AN,APHASE,APHASEN,AGE,SEX,RACE,AEOUT,AESER,AEREL,AETOX,AEWD,AEACN,AEDECOD,AETERM,ASTDTC,AENDTC,ADURC,AESHOSP,AESDTH,AESMIE,AESLIFE,AESCONG,AESDISAB,AESPROT,ALAT,DRUG) 
+
+list <- list %>% rename("Treatment"= TRT01A) %>% 
+  arrange(USUBJID) %>% 
+  unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/") %>% 
+  mutate(SEX = case_when(
+    SEX == "M" ~ "Male")) 
+list <- list %>% mutate(`Site Id. / Unique Subject Id.`=case_when(
+  duplicated(`Site Id. / Unique Subject Id.`)==T ~" ",
+  TRUE ~`Site Id. / Unique Subject Id.`))
+list <- list %>%  unite("Age (YEARS) / Sex/ Race",AGE:SEX:RACE, sep = "/") %>% 
+  mutate(`Age (YEARS) / Sex/ Race`= case_when(
+    duplicated(`Age (YEARS) / Sex/ Race`)==T ~ " ",
+               TRUE ~ `Age (YEARS) / Sex/ Race`))
+list <- list %>% 
+  unite("Preferred Term/ VERBATIM TEXT",AEDECOD:AETERM,sep = "/") %>% 
+  mutate(`Preferred Term/ VERBATIM TEXT` = case_when(
+    duplicated(`Preferred Term/ VERBATIM TEXT`)==T ~ "",
+    TRUE ~ `Preferred Term/ VERBATIM TEXT`))
+
+list <- list %>% 
+  mutate("Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration"=paste(AEOUT,ASTDTC,APHASE,AENDTC,ADURC, sep = "/")) 
+list <- list %>% 
+  unite("Side/Drug",ALAT:DRUG, sep = "/")
+
+list <- list %>% rename(c("Death [1]" = AESDTH, "Life [2]" = AESLIFE, "Hosp [3]" = AESHOSP, "Disab [4]" = AESDISAB, "Birth Dfect [5]" = AESCONG, "Med Imp [6]"= AESMIE, "Prot [7]" = AESPROT))
+
+list17 <- list %>% select(Treatment,`Site Id. / Unique Subject Id.`,`Age (YEARS) / Sex/ Race`,`Preferred Term/ VERBATIM TEXT`,`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`,`Death [1]`,`Life [2]`,`Hosp [3]`,`Disab [4]`,`Birth Dfect [5]`,`Med Imp [6]`,`Prot [7]`,`Side/Drug`)
+
+list17 <- list17 %>% 
+   add_row(Treatment= " ",`Site Id. / Unique Subject Id.`= "[1] Resulted in Death.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="",.after = 13) %>% 
+   add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[2] Was life-threatening.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="") %>% 
+   add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[3] Required hospitalization or prolongation of existing hospitalization.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="") %>% 
+  add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[4] Resulted in persistent or significant disability/incapacity.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="") %>%
+  add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[5] Congenital anomaly/birth defect.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="") %>% 
+  add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[6] Other medically important serious event.",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="") %>%
+  add_row(Treatment= " ",`Site Id. / Unique Subject Id.` = "[7] Protocol specified serious event",`Age (YEARS) / Sex/ Race`="",`Preferred Term/ VERBATIM TEXT`= "",`Outcome/ Onset Date/ Phase/ Date of Resolution/ Duration`="",`Death [1]`="",`Life [2]`="",`Hosp [3]`="",`Disab [4]`="",`Birth Dfect [5]`="",`Med Imp [6]`="",`Prot [7]`="",`Side/Drug`="")
+title <- c("Listing 17 <br/>Listing of Reasons for Considering as a Serious Adverse Event<br/> <br/>"=13 )
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Safety<br/>"=13) 
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list17,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls()) 
+```
