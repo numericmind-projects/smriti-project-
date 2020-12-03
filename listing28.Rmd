@@ -1,0 +1,123 @@
+---
+title: "Untitled"
+author: "Smriti karki"
+date: "12/1/2020"
+output: html_document
+---
+
+```{r}
+library(haven)
+library(tidyverse)
+library(pagedown)
+library(kableExtra)
+library(dplyr)
+```
+#for USUBJID == "116482.000115
+```{r}
+adcvf <- read_sas("E:/Numeric mind/adam/New_Study-master/New_Study-master/adam/adcvf.sas7bdat",NULL)
+list <- adcvf %>% filter(ITTEFL == "Y" & ANL05FL== "Y"& ANL02FL == "Y") %>% 
+  select(SITEID,USUBJID,LTSUBJID,TRT01P,TRT01PN,APHASE,APHASEN,AVISIT,AVISITN,VISIT,VISITNUM,ADT,ADY,PARAMCD,PARAMLBL,AVALC,CHG,CVFSC,TARGETYN)
+list <- list %>% rename("Treatment"= TRT01P) %>% rename("Phase" = APHASE) %>% 
+  arrange(USUBJID) 
+listf <- list %>% filter(USUBJID == "116482.000115") 
+list1 <- list[12:22,]
+# list1 <- list1 %>% mutate("HIV-1 RNA (c/ml)"= case_when(
+#   AVALC == "<40" | AVALC == "89" ~ AVALC))
+# list1 <- list1 %>% mutate("HIV-1 RNA (log 10 c/ml)"= case_when(
+#   AVALC == "<1.60" | AVALC == "1.95" ~ AVALC))
+list2 <- listf %>% group_by(VISIT) %>% summarise(AVALC = stringr::str_c(AVALC,collapse = ","))
+list2 <- list2 %>% separate(AVALC,c("HIV-1 RNA (c/ml)","HIV-1 RNA (log 10 c/ml)"),",")
+
+list2 <- list1 %>% full_join(list2)
+
+list2 <- list2 %>% unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/ ")
+list2 <- list2 %>% mutate(`Site Id. / Unique Subject Id.`=case_when(
+  duplicated(`Site Id. / Unique Subject Id.`)==T ~" ",
+  TRUE ~`Site Id. / Unique Subject Id.`))
+list2 <- list2 %>% rename(c("Nominal Visit" =VISIT, "Actual Relative Time" = AVISIT,"Study Day" = ADY, "Change from baseline (log 10 c/ml) [1]" = CHG,"Target Detected Yes/No/Value"= TARGETYN,"Sample Date"= ADT))
+list2 <- list2 %>% mutate(Phase = case_when(
+  duplicated(Phase)==T ~" ",
+  TRUE ~Phase))
+list2$`Sample Date` <- toupper(format(list2$`Sample Date`,"%d%b%Y"))
+list2$`Change from baseline (log 10 c/ml) [1]`[is.na(list2$`Change from baseline (log 10 c/ml) [1]`)] <- " "
+
+list2 <- list2 %>% mutate(`Target Detected Yes/No/Value`=case_when(
+  `Target Detected Yes/No/Value`=="Y" ~"Yes",
+  `Target Detected Yes/No/Value`=="N" ~ "No",
+  TRUE ~ `HIV-1 RNA (c/ml)`))
+list2 <- list2 %>% select(`Site Id. / Unique Subject Id.`,Treatment,`Nominal Visit`,`Actual Relative Time`,`Sample Date`,`Study Day`,`HIV-1 RNA (c/ml)`,`HIV-1 RNA (log 10 c/ml)`,`Change from baseline (log 10 c/ml) [1]`,`Target Detected Yes/No/Value`)
+```
+#for USUBJID == "116482.000154"
+```{r}
+
+listg <- list %>% filter(USUBJID == "116482.000154") 
+list3 <- listg[12:22,]
+list4 <- listg %>% group_by(VISIT) %>% summarise(AVALC = stringr::str_c(AVALC,collapse = ","))
+list5 <- list4 %>% separate(AVALC,c("HIV-1 RNA (c/ml)","HIV-1 RNA (log 10 c/ml)"),",")
+
+list6 <- list3 %>% full_join(list5)
+
+
+list6 <- list6 %>% unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/ ")
+list6 <- list6 %>% mutate(`Site Id. / Unique Subject Id.`=case_when(
+  duplicated(`Site Id. / Unique Subject Id.`)==T ~" ",
+  TRUE ~`Site Id. / Unique Subject Id.`))
+list6 <- list6 %>% rename(c("Nominal Visit" =VISIT, "Actual Relative Time" = AVISIT,"Study Day" = ADY, "Change from baseline (log 10 c/ml) [1]" = CHG,"Target Detected Yes/No/Value"= TARGETYN,"Sample Date"= ADT))
+list6 <- list6 %>% mutate(Phase = case_when(
+  duplicated(Phase)==T ~" ",
+  TRUE ~Phase))
+list6$`Sample Date` <- toupper(format(list6$`Sample Date`,"%d%b%Y"))
+list6$`Change from baseline (log 10 c/ml) [1]`[is.na(list6$`Change from baseline (log 10 c/ml) [1]`)] <- " "
+
+list6 <- list6 %>% mutate(`Target Detected Yes/No/Value`=case_when(
+  `Target Detected Yes/No/Value`=="Y" ~"Yes",
+  `Target Detected Yes/No/Value`=="N" ~ "No",
+  TRUE ~ `HIV-1 RNA (c/ml)`))
+list6 <- list6 %>% select(`Site Id. / Unique Subject Id.`,Treatment,`Nominal Visit`,`Actual Relative Time`,`Sample Date`,`Study Day`,`HIV-1 RNA (c/ml)`,`HIV-1 RNA (log 10 c/ml)`,`Change from baseline (log 10 c/ml) [1]`,`Target Detected Yes/No/Value`)
+
+
+
+```
+#for USUBJID == "116482.000235"
+```{r}
+listh <- list %>% filter(USUBJID == "116482.000235") 
+list7 <- listh[11:20,]
+list8 <- listh %>% group_by(VISIT) %>% summarise(AVALC = stringr::str_c(AVALC,collapse = ","))
+list9 <- list8 %>% separate(AVALC,c("HIV-1 RNA (c/ml)","HIV-1 RNA (log 10 c/ml)"),",")
+
+list10 <- list7 %>% full_join(list9)
+
+list10 <- list10 %>% unite("Site Id. / Unique Subject Id.",SITEID:USUBJID, sep = "/ ")
+list10 <- list10 %>% mutate(`Site Id. / Unique Subject Id.`=case_when(
+  duplicated(`Site Id. / Unique Subject Id.`)==T ~" ",
+  TRUE ~`Site Id. / Unique Subject Id.`))
+list10 <- list10 %>% rename(c("Nominal Visit" =VISIT, "Actual Relative Time" = AVISIT,"Study Day" = ADY, "Change from baseline (log 10 c/ml) [1]" = CHG,"Target Detected Yes/No/Value"= TARGETYN,"Sample Date"= ADT))
+list10 <- list10 %>% mutate(Phase = case_when(
+  duplicated(Phase)==T ~" ",
+  TRUE ~Phase))
+list10$`Sample Date` <- toupper(format(list10$`Sample Date`,"%d%b%Y"))
+list10$`Change from baseline (log 10 c/ml) [1]`[is.na(list10$`Change from baseline (log 10 c/ml) [1]`)] <- " "
+
+list10 <- list10 %>% mutate(`Target Detected Yes/No/Value`=case_when(
+  `Target Detected Yes/No/Value`=="Y" ~"Yes",
+  `Target Detected Yes/No/Value`=="N" ~ "No",
+  TRUE ~ `HIV-1 RNA (c/ml)`))
+list10 <- list10 %>% select(`Site Id. / Unique Subject Id.`,Treatment,`Nominal Visit`,`Actual Relative Time`,`Sample Date`,`Study Day`,`HIV-1 RNA (c/ml)`,`HIV-1 RNA (log 10 c/ml)`,`Change from baseline (log 10 c/ml) [1]`,`Target Detected Yes/No/Value`)
+
+```
+#merging list2,list6 and list10 to form list28
+
+```{r}
+list28 <- list2 %>% full_join(list6)
+list28 <- list28 %>% full_join(list10)
+title <- c("Listing 28<br/>Listing of All Plasma HIV-1 RNA Data for Subjects with Viral Load >=50 c/mL<br/> <br/>"=10)
+sidetitle <- c("Protocol: 209035 POLAR <br/>
+Population: Intent-to-Treat Exposed<br/>"=10)
+footer <- paste("<br/><br/>","smritikarki:",getwd(),toupper(format(Sys.time(),format = "%d%b%Y %H:%M")))
+kableExtra::kable(list28,align = "l",escape = F, bootstrap_options = "basic") %>% 
+  kable_minimal(full_width = T, html_font = "Courier New") %>% 
+  kableExtra::add_header_above(header = title,escape = F,line = F) %>% 
+  kableExtra::add_header_above(header = sidetitle,escape = F,line = F,align = "l")
+rm(list = ls()) 
+
+```
